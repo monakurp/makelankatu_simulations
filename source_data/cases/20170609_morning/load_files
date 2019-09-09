@@ -1,0 +1,6 @@
+# Load in the full backup (see the config file for details)
+fimex-0.67 -c load_mbr0_full_backup.cfg 
+
+# Load surface_pressure and boundary layer height from another file
+fimex-0.67 -c load_subset.cfg
+

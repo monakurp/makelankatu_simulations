@@ -1,0 +1,21 @@
+Mäkelänkadun hiukkasmassa (PM) ja typen oksidien (NOx) päästöt laskettuna vuosien 2016 ja 2017 eri tunneille. 
+Laskennassa on käytetty Mäkelänkadun liikennemäärää ja ajoneuvojakaumaa (eli kuinka paljon henkilö-, pakettiautoja jne). 
+
+Päästökertoimet: HBEFA (yksikkö g/km/h)
+
+Euroluokkajakaumat: VTT Aliisa
+
+Anu Kousan tekemät arviot: 
+	- minkä verran eri euroluokissa (EURO I-IV) on autoja
+	- mikä on bensa- ja dieselautojen osuus (käytetty suoriteosuutta eli dieselautoilla ajetaan enemmän kuin bensa-autoilla)
+	- Bussien kohdalla on oletettu, että kaikki bussit ovat HSL:n v. 2016 alun mukaisen euroluokkajakauman busseja.
+	- Päästöissä on huomioitu myös HSL:n busseissa käytettävä biopolttoaine. Tosin on oletettu, että kaikki bussit käyttävät sitä. Eli bussien päästöistä on tullut aliarvio.
+
+50 km/h tarkoittaa, että  Mäkelänkadun nopeusrajoitus on 50 km/h.  Sitä on käytetty maksiminopeutena. Arjelle, lauantaille ja sunnuntaille on eri nopeusprofiilit. Perustuvat Strafican tekemään laskentaan. Ovat todennäköisesti liian suuria nopeuksia => päästöt liian pieniä.
+
+Arviossa on käytetty KSV:n keskimääräistä tuntijakaumaa ja viikonpäivävaihtelua Helsingin niemellä ja viikkojakaumaa. Lauantain ja sunnuntain liikennemäärien tuntijakaumat perustuvat Oscar projektissa aikoinaan saatuihin tietoihin.  Yritetty huomioida pyhät ja aatot.
+
+Tiedostot:
+- PMMakeläakatu2016_50kmhEmissions.xlsx
+- NOxMakelankatu2016_50kmhEmissions.xlsx
+

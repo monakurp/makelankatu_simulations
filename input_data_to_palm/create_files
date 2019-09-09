@@ -1,0 +1,83 @@
+
+rm -f PIDS_STATIC*
+
+# ------------------------------------------------------------------------------------------------#
+# Root topography, orography, vegetation and land use:
+# Select area
+extractDomainFromTile.py -f ~/Helsinki3D/Topography_H3D.npz -fo topo_root -gc -iP 6676070 25497317 -dx 9 9 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f ~/Helsinki3D/Orography_H3D.npz -fo oro_root -gc -iP 6676070 25497317 -dx 9 9 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f ~/Helsinki3D/Treeheight_agl_H3D.npz -fo vege_root -gc -iP 6676070 25497317 -dx 9 9 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f ~/Helsinki3D/Ground_streets_buildings_water_H3D.npz -fo landuse_root -gc -iP 6676070 25497317 -dx 9 9 -r 0.5 0.5 -wd 270 -N 768 768
+
+# Remove artifically created areas in the eastern part
+python fix_root.py
+
+# Create LAD file
+rasterToCanopy3D.py -f vege_root.npz -fo lad_root.npz -m const -l 6 -zr 4 20
+
+# Create building_id map
+maskFromRasterTile.py -f landuse_root.npz -fo building_id_root.npz -mv 6
+
+# Separate buildings from the orography
+rasterTileSubtraction.py -f topo_root.npz -fs oro_root.npz -fm building_id_root.npz -fo buildings_root.npz -mvl 3.0 -ntp
+
+# ------------------------------------------------------------------------------------------------#
+# Parent topography, orography, vegetation and land use:
+
+# Select area
+extractDomainFromTile.py -f ~/Helsinki3D/Topography_H3D.npz -fo topo_parent -gc -iP 6676070 25497317 -dx 3 3 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f ~/Helsinki3D/Orography_H3D.npz -fo oro_parent -gc -iP 6676070 25497317 -dx 3 3 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f ~/Helsinki3D/Treeheight_agl_H3D.npz -fo vege_parent -gc -iP 6676070 25497317 -dx 3 3 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f ~/Helsinki3D/Ground_streets_buildings_water_H3D.npz -fo landuse_parent -gc -iP 6676070 25497317 -dx 3 3 -r 0.5 0.5 -wd 270 -N 768 768
+
+# Create LAD file
+rasterToCanopy3D.py -f vege_parent.npz -fo lad_parent.npz -m const -l 6 -zr 4 20
+
+# Create building_id map
+maskFromRasterTile.py -f landuse_parent.npz -fo building_id_parent.npz -mv 6
+
+# Separate buildings from the orography
+rasterTileSubtraction.py -f topo_parent.npz -fs oro_parent.npz -fm building_id_parent.npz -fo buildings_parent.npz -mvl 3.0 -ntp
+
+# ------------------------------------------------------------------------------------------------#
+# Child topography, orography, vegetation and land use:
+
+# Select area
+extractDomainFromTile.py -f ~/Helsinki3D/Topography_H3D.npz -fo topo_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+extractDomainFromTile.py -f ~/Helsinki3D/Orography_H3D.npz -fo oro_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+extractDomainFromTile.py -f ~/Helsinki3D/Treeheight_agl_H3D.npz -fo vege_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+extractDomainFromTile.py -f ~/Helsinki3D/Ground_streets_buildings_water_H3D.npz -fo landuse_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+
+# Create LAD file
+rasterToCanopy3D.py -f vege_child.npz -fo lad_child.npz -m const -l 6 -zr 4 20
+
+# Create building_id map
+maskFromRasterTile.py -f landuse_child.npz -fo building_id_child.npz -mv 6
+
+# Separate buildings from the orography
+rasterTileSubtraction.py -f topo_child.npz -fs oro_child.npz -fm building_id_child.npz -fo buildings_child.npz -mvl 3.0 -ntp
+
+# ------------------------------------------------------------------------------------------------#
+# Child traffic maps:
+
+# With lanes:
+extractDomainFromTile.py -f ~/Helsinki3D/Ground_streets_buildings_water_H3D.npz -fo lanes_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+
+# With street types:
+extractDomainFromTile.py -f ~/Katumetro/road_maps/merged.npz -fo street_types_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+
+# ------------------------------------------------------------------------------------------------#
+# Create PIDS_STATIC:
+genPIDSInput.py pids_parent.cfg
+mv PIDS_STATIC PIDS_STATIC_N02
+
+genPIDSInput.py pids_child.cfg
+mv PIDS_STATIC PIDS_STATIC_N03
+
+genPIDSInput.py pids_root.cfg
+
+
+rm -f .extractDomain*
+rm -f .rasterTo*
+rm -f .maskFromRaster*
+
