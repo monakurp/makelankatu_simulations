@@ -8,9 +8,7 @@ import matplotlib.pyplot as plt
 import hdf5storage
 from netcdfTools import createNetcdfVariable
 
-folder = '/home/monakurp/makelankatu_simulations'
-
-os.chdir(( folder ))
+os.chdir(('/home/stromjan/Maps/Scripts/Dynamic'))
 
 parameter = True
 variable  = False
@@ -23,19 +21,19 @@ variable  = False
 sim_year   = 2017
 sim_month  = 6 # 12
 sim_day    = 9 # 7
-start_hour = 20 #7
-end_hour   = 21 #9
+start_hour = 7 #7
+end_hour   = 9 #9
 plusUTC    = 3 # 2 h
-sim_time   = 'evening' #'morning'
+sim_time   = 'morning' #'morning'
 
-if sim_month==12 and sim_day==7:
+if sim_month==6 and sim_day==9:
   orig     = [60.1663312, 24.873065935] # 900 m shift to the left
 else:
   orig     = [60.1663312,24.8895075] 
 
 # PALM grid
 
-grid_type = 'test' # real or test
+grid_type = 'real' # real or test
 
 if grid_type == 'real':
   nx = 768-1
@@ -87,13 +85,13 @@ dt = 3600.0
 
 datestr = '{}{:02d}{:02d}'.format( sim_year, sim_month, sim_day )
 
-fname_full_backup = 'source_data/cases/{}_{}/meps_mbr0_full_backup_2_5km_{}T00Z.nc'.format( datestr, sim_time, datestr )
-fname_subset      = 'source_data/cases/{}_{}/meps_subset_2_5km_{}T00Z.nc'.format( datestr, sim_time, datestr )
-fname_soil        = 'source_data/ERA5_reanalysis_soil_cropped.nc'
-fname_adchem      = 'source_data/ADCHEM_data/09062017.mat'
+fname_full_backup = '/home/stromjan/Maps/Scripts/Dynamic/meps_mbr0_full_backup_2_5km_{}T00Z.nc'.format( datestr, sim_time, datestr )
+fname_subset      = '/home/stromjan/Maps/Scripts/Dynamic/meps_subset_2_5km_{}T00Z.nc'.format( datestr, sim_time, datestr )
+fname_soil        = '/home/stromjan/Maps/Scripts/Dynamic/reanalysis_soil.nc'
+fname_adchem      = '/home/stromjan/Maps/Scripts/Dynamic/09062017.mat'
 
-fname_out     = 'input_data_to_palm/cases/{}_{}/PIDS_DYNAMIC_{}'.format( datestr, sim_time, grid_type )
-fname_out_N03 = 'input_data_to_palm/cases/{}_{}/PIDS_DYNAMIC_{}_N03'.format( datestr, sim_time, grid_type )
+fname_out     = '/home/stromjan/Maps/Scripts/Dynamic/PIDS_DYNAMIC_{}'.format( datestr, sim_time, grid_type )
+fname_out_N03 = '/home/stromjan/Maps/Scripts/Dynamic/PIDS_DYNAMIC_{}_N03'.format( datestr, sim_time, grid_type )
 
 dsout     = nc.Dataset( fname_out, 'w' )
 dsout_N03 = nc.Dataset( fname_out_N03, 'w' )
@@ -108,6 +106,7 @@ for dsouti in [dsout, dsout_N03]:
   dsouti.origin_lat     = orig[0]
   dsouti.origin_lon     = orig[1]
   dsouti.origin_z       = 0.0
+  dsouti.origin_time = "{}-{:02d}-{:02d} {:02d}:00:00 +{:02d}".format(sim_year, sim_month, sim_day, start_hour, plusUTC) #Was previously missing
   dsouti.palm_version   = "6.0"
   dsouti.rotation_angle = 0.0
 
@@ -141,14 +140,14 @@ subset = nc.Dataset( fname_subset )
 # Check also that the files are for the same time and coordinates!
 
 time = np.array( full_backup['time'] ) # "seconds since 1970-01-01 00:00:00 +00:00"
-timestr = dict()
+timestring = dict()
 if ( np.array( subset['time'][:] ) != time[:] ).any():
   sys.exit('Files do not have the same time stamps!')
 for t in range( len( time ) ):
-  timestr[t] = dtime.datetime.utcfromtimestamp( time[t] )
-  if ( timestr[t].hour + plusUTC ) == start_hour:  
+  timestring[t] = dtime.datetime.utcfromtimestamp( time[t] )
+  if ( timestring[t].hour + plusUTC ) == start_hour:  
     ss = t
-  if ( timestr[t].hour + plusUTC ) == end_hour: 
+  if ( timestring[t].hour + plusUTC ) == end_hour: 
     ee = t
     
 longitude = np.array( full_backup['longitude'] )
@@ -246,36 +245,43 @@ soil = nc.Dataset( fname_soil )
 soil_lon = np.array( soil['longitude'] )
 soil_lat = np.array( soil['latitude'] )
 soil_time = np.array( soil['time'] )
-ddeg = soil_lon[1] - soil_lon[0]
 
 soil_timestr = [dtime.datetime( 1900, 1, 1 ) + dtime.timedelta( hours=float(t1) ) for t1 in soil_time]
 
-zsoil_orig = np.array([0.035, 0.175, 0.64, 1.945]) # https://confluence.ecmwf.int/pages/viewpage.action?pageId=56660259
-zsoil = np.array([ 0.01, 0.02, 0.04, 0.06, 0.14, 0.26, 0.54, 1.86 ])
+zsoil = np.array([0.035, 0.175, 0.64, 1.945]) # https://confluence.ecmwf.int/pages/viewpage.action?pageId=56660259
+zsoil_PALM = np.array([0.01, 0.02, 0.04, 0.06, 0.14, 0.26, 0.54, 1.86]) #PALM default soil configuration
 
-loni = np.where( ( soil_lon > lons[0] ) & ( soil_lon < lons[-1] + ddeg ) )[0][0]
-lati = np.where( ( soil_lat > lats[0] ) & ( soil_lat < lats[-1] + ddeg ) )[0][0]
+
+if grid_type=='real':
+  loni = np.where( ( soil_lon > lons[0] ) & ( soil_lon < lons[-1]+0.25 ) )[0][0]
+  lati = np.where( ( soil_lat > lats[0] ) & ( soil_lat < lats[-1]+0.25 ) )[0][0]
+else:
+  loni = 100
+  lati = 119
 
 soil_t = np.zeros( len(zsoil), dtype=float )
 soil_m = np.zeros( len(zsoil), dtype=float )
 
-for t in range( len( time ) ):
-  for tt in range( len( soil_timestr ) ):
-    if timestr[t] == soil_timestr[tt]:
-      if ( timestr[t].hour + plusUTC ) == start_hour:
-        ti = tt
+if sim_month < 7:
+  ti = 0
+else:
+  ti = 1
 
-dummy_t = np.zeros( len( zsoil_orig ), dtype=float )
-dummy_m = np.zeros( len( zsoil_orig ), dtype=float )
-for i in range( len( zsoil_orig ) ):
-  dummy_t[i] = soil['stl{}'.format(i+1)][ti,lati,loni]
-  dummy_m[i] = soil['swvl{}'.format(i+1)][ti,lati,loni]
+for i in range( len( zsoil ) ):
+  soil_t[i]  = soil['stl{}'.format(i+1)][ti,lati,loni]
+  soil_m[i] = soil['swvl{}'.format(i+1)][ti,lati,loni]
 
-fver = interp1d( zsoil_orig, dummy_t, kind='linear', fill_value="extrapolate" )
-soil_t = fver( zsoil )
 
-fver = interp1d( zsoil_orig, dummy_m, kind='linear', fill_value="extrapolate" )
-soil_m = fver( zsoil )
+#soil_t = [282.16, 282.09, 281.95, 281.82, 281.28, 280.51, 278.94, 275.37]
+#soil_m = [0.322, 0.322, 0.324, 0.325, 0.331, 0.340, 0.357, 0.403] #Last one was 0.404, maximum for coarse soil is 0.403
+
+#fitting a curve to get soil variables at PALM soil levels
+soil_t_fit = np.poly1d(np.polyfit(zsoil,soil_t,2))
+soil_m_fit = np.poly1d(np.polyfit(zsoil,soil_m,2))
+zsoil = zsoil_PALM
+soil_t = soil_t_fit(zsoil)
+soil_m = soil_m_fit(zsoil)
+soil_m[soil_m > 0.403] = 0.403 #check that soil_m doesn't exceed minimum saturation moisture of soil_types
 
 #%% PALM grid:
 
@@ -650,15 +656,15 @@ shour  = int( adchem['shour'][0][0] )
 ehour  = int( adchem['ehour'][0][0] )
 
 # Select correct times:
-adchem_timestr = np.arange( '{:04d}-{:02d}-{:02d}T{:02d}:00'.format( sim_year, smonth, sday, shour ),
+adchem_timestring = np.arange( '{:04d}-{:02d}-{:02d}T{:02d}:00'.format( sim_year, smonth, sday, shour ),
                                '{:04d}-{:02d}-{:02d}T{:02d}:00'.format( sim_year, emonth, eday, ehour ),
                                dtype='datetime64[h]')
 for t in range( len( time ) ):
-  for tt in range( len( adchem_timestr ) ):
-    if timestr[t] == adchem_timestr[tt]:
-      if ( timestr[t].hour + plusUTC ) == start_hour:  ### CHECK plusutc FROM PONTUS!!!
+  for tt in range( len( adchem_timestring ) ):
+    if timestring[t] == adchem_timestring[tt]:
+      if ( timestring[t].hour + plusUTC ) == start_hour:  ### CHECK plusutc FROM PONTUS!!!
         ss = tt
-      if ( timestr[t].hour + plusUTC ) == end_hour:  ### CHECK plusutc FROM PONTUS!!! 
+      if ( timestring[t].hour + plusUTC ) == end_hour:  ### CHECK plusutc FROM PONTUS!!! 
         ee = tt
 
 ncc = len( adchem['composition_name'][0] )

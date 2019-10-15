@@ -1,0 +1,195 @@
+
+rm -f PIDS_STATIC*
+
+# ------------------------------------------------------------------------------------------------#
+# Root topography, orography, vegetation and land use:
+# Select area
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Topography_H3D.npz -fo topo_root -gc -iP 6676070 25496417 -dx 9 9 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Orography_H3D.npz -fo oro_root -gc -iP 6676070 25496417 -dx 9 9 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Treeheight_agl_H3D.npz -fo vege_root -gc -iP 6676070 25496417 -dx 9 9 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Land_cover_types_H3D.npz -fo landuse_root -gc -iP 6676070 25496417 -dx 9 9 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Water_type.npz -fo water_root -gc -iP 6676070 25496417 -dx 9 9 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Pavements_withMaanpeite.npz -fo pavement_root -gc -iP 6676070 25496417 -dx 9 9 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Soil_type.npz -fo soil_root -gc -iP 6676070 25496417 -dx 9 9 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Vegetation_type.npz -fo vegetation_root -gc -iP 6676070 25496417 -dx 9 9 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Building_type.npz -fo building_type_root -gc -iP 6676070 25496417 -dx 9 9 -r 0.5 0.5 -wd 270 -N 768 768
+
+# Create LAD file
+rasterToCanopy3D.py -f vege_root.npz -fo lad_root.npz -m const -l 6 -zr 4 20
+
+# Create building_id map
+maskFromRasterTile.py -f landuse_root.npz -fo building_id_root.npz -mv 6
+
+#replace user-defined values (0) with fill values (-127)
+replaceRasterValues.py -f water_root.npz -fo water_root.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f pavement_root.npz -fo pavement_root.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f soil_root.npz -fo soil_root.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f vegetation_root.npz -fo vegetation_root.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+
+# Approximate undefined soil types as medium porosity (2)
+replaceRasterValues.py -f soil_root.npz -fo soil_root.npz -gt 6 -v 2 -p1 0 0 -p2 768 768
+
+# clean topography
+rasterTileSubtraction.py -f topo_root.npz -fs oro_root.npz -fm building_id_root.npz -mvl 6.0 -ntp -fo topo_root.npz
+
+#fill values where there is no building height
+
+#create building id from topography
+replaceRasterValues.py -f topo_root.npz -fo building_id_root.npz -gt 0 -v 1 -p1 0 0 -p2 768 768
+
+#approximate building type as office building built between 1950-2000
+replaceRasterValues.py -f building_id_root.npz -fo building_root.npz -gt 0 -v 5 -p1 0 0 -p2 768 768 
+
+#replace with fill value (-9999) where there are no buildings
+replaceRasterValues.py -f topo_root.npz -fo topo_root.npz -lt 0.000001 -v -9999.9 -p1 0 0 -p2 768 768 
+
+#same for building id, except use different fill value (-127)
+replaceRasterValues.py -f building_id_root.npz -fo building_id_root.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+
+
+replaceRasterValues.py -f building_root.npz -fo building_root.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+
+
+# fill missing surface types according to PIDS
+fixSurfaceTypes.py -f0 vegetation_root.npz -f1 pavement_root.npz -f2 water_root.npz -f3 building_root.npz -f4 building_type_root.npz -f5 soil_root.npz
+
+# create surface fractions
+rastersToSurfaceFraction.py -f0 vegetation_root.npz -f1 pavement_root.npz -f2 water_root.npz -fo surface_fraction_root
+
+# Save in a NetCDF file
+#rasterToNetCdf.py -f topo_root.npz -fo topo_root.nc -flat
+#rasterToNetCdf.py -f oro_root.npz -fo oro_root.nc -flat
+#rasterToNetCdf.py -f vege_root.npz -fo vege_root.nc -flat
+
+
+# ------------------------------------------------------------------------------------------------#
+# Parent topography, orography, vegetation and land use:
+
+# Select area
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Topography_H3D.npz -fo topo_parent -gc -iP 6676070 25497317 -dx 3 3 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Orography_H3D.npz -fo oro_parent -gc -iP 6676070 25497317 -dx 3 3 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Treeheight_agl_H3D.npz -fo vege_parent -gc -iP 6676070 25497317 -dx 3 3 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Land_cover_types_H3D.npz -fo landuse_parent -gc -iP 6676070 25497317 -dx 3 3 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Water_type.npz -fo water_parent -gc -iP 6676070 25497317 -dx 3 3 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Pavements_withMaanpeite.npz -fo pavement_parent -gc -iP 6676070 25497317 -dx 3 3 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Soil_type.npz -fo soil_parent -gc -iP 6676070 25497317 -dx 3 3 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Vegetation_type.npz -fo vegetation_parent -gc -iP 6676070 25497317 -dx 3 3 -r 0.5 0.5 -wd 270 -N 768 768
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Building_type.npz -fo building_type_parent -gc -iP 6676070 25497317 -dx 3 3 -r 0.5 0.5 -wd 270 -N 768 768
+
+# Create LAD file
+rasterToCanopy3D.py -f vege_parent.npz -fo lad_parent.npz -m const -l 6 -zr 4 20
+
+# Create building_id map
+maskFromRasterTile.py -f landuse_parent.npz -fo building_id_parent.npz -mv 6
+
+
+#replace user-defined values
+replaceRasterValues.py -f water_parent.npz -fo water_parent.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f pavement_parent.npz -fo pavement_parent.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f soil_parent.npz -fo soil_parent.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f vegetation_parent.npz -fo vegetation_parent.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f soil_parent.npz -fo soil_parent.npz -gt 6 -v 2 -p1 0 0 -p2 768 768
+
+# clean topography
+rasterTileSubtraction.py -f topo_parent.npz -fs oro_parent.npz -fm building_id_parent.npz -mvl 6.0 -ntp -fo topo_parent.npz
+
+# same as with root
+replaceRasterValues.py -f topo_parent.npz -fo building_id_parent.npz -gt 0 -v 1 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f building_id_parent.npz -fo building_parent.npz -gt 0 -v 5 -p1 0 0 -p2 768 768 
+replaceRasterValues.py -f topo_parent.npz -fo topo_parent.npz -lt 0.000001 -v -9999.9 -p1 0 0 -p2 768 768 
+replaceRasterValues.py -f building_id_parent.npz -fo building_id_parent.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f building_parent.npz -fo building_parent.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+
+
+# fill missing surface types according to PIDS
+fixSurfaceTypes.py -f0 vegetation_parent.npz -f1 pavement_parent.npz -f2 water_parent.npz -f3 building_parent.npz -f4 building_type_parent.npz -f5 soil_parent.npz
+
+# create surface fractions
+rastersToSurfaceFraction.py -f0 vegetation_parent.npz -f1 pavement_parent.npz -f2 water_parent.npz -fo surface_fraction_parent
+
+# Save in a NetCDF file
+#rasterToNetCdf.py -f topo_parent.npz -fo topo_parent.nc -flat
+#rasterToNetCdf.py -f oro_parent.npz -fo oro_parent.nc -flat
+#rasterToNetCdf.py -f vege_parent.npz -fo vege_parent.nc -flat
+
+# ------------------------------------------------------------------------------------------------#
+# Child topography, orography, vegetation and land use:
+
+# Select area
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Topography_H3D.npz -fo topo_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Orography_H3D.npz -fo oro_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Treeheight_agl_H3D.npz -fo vege_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Land_cover_types_H3D.npz -fo landuse_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Water_type.npz -fo water_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Pavements_withMaanpeite.npz -fo pavement_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Soil_type.npz -fo soil_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Vegetation_type.npz -fo vegetation_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+extractDomainFromTile.py -f $HOME/Maps/npz_files/Building_type.npz -fo building_type_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+
+
+# Create LAD file
+rasterToCanopy3D.py -f vege_child.npz -fo lad_child.npz -m const -l 6 -zr 4 20
+
+# Create building_id map
+maskFromRasterTile.py -f landuse_child.npz -fo building_id_child.npz -mv 6
+
+
+#replace user-defined values
+replaceRasterValues.py -f water_child.npz -fo water_child.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f pavement_child.npz -fo pavement_child.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f soil_child.npz -fo soil_child.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f vegetation_child.npz -fo vegetation_child.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f soil_child.npz -fo soil_child.npz -gt 6 -v 2 -p1 0 0 -p2 768 768
+
+# clean topography
+rasterTileSubtraction.py -f topo_child.npz -fs oro_child.npz -fm building_id_child.npz -mvl 6.0 -ntp -fo topo_child.npz
+
+# same as with root/parent
+replaceRasterValues.py -f topo_child.npz -fo building_id_child.npz -gt 0 -v 1 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f building_id_child.npz -fo building_child.npz -gt 0 -v 5 -p1 0 0 -p2 768 768 
+replaceRasterValues.py -f topo_child.npz -fo topo_child.npz -lt 0.000001 -v -9999.9 -p1 0 0 -p2 768 768 
+replaceRasterValues.py -f building_id_child.npz -fo building_id_child.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f building_child.npz -fo building_child.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+
+
+# fill missing surface types according to PIDS
+fixSurfaceTypes.py -f0 vegetation_child.npz -f1 pavement_child.npz -f2 water_child.npz -f3 building_child.npz -f4 building_type_child.npz -f5 soil_child.npz
+
+# create surface fractions
+rastersToSurfaceFraction.py -f0 vegetation_child.npz -f1 pavement_child.npz -f2 water_child.npz -fo surface_fraction_child
+
+# Save in a NetCDF file
+#rasterToNetCdf.py -f topo_child.npz -fo topo_child.nc -flat
+#rasterToNetCdf.py -f oro_child.npz -fo oro_child.nc -flat
+#rasterToNetCdf.py -f vege_child.npz -fo vege_child.nc -flat
+
+# ------------------------------------------------------------------------------------------------#
+# Child traffic maps:
+
+# With lanes:
+#extractDomainFromTile.py -f $HOME/Maps/npz_files/Land_cover_types_H3D.npz -fo lanes_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+
+# With street types:
+#extractDomainFromTile.py -f ~/Katumetro/road_maps/merged.npz -fo street_types_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
+
+# Save in NetCDF files
+#rasterToNetCdf.py -f lanes_child.npz -fo lanes_child.nc -flat
+#rasterToNetCdf.py -f street_types_child.npz -fo street_types_child.nc -flat
+
+
+# ------------------------------------------------------------------------------------------------#
+# Create PIDS_STATIC:
+genPIDSInput.py pids_parent.cfg
+mv PIDS_STATIC Makela_static_N02
+
+genPIDSInput.py pids_child.cfg
+mv PIDS_STATIC Makela_static_N03
+
+genPIDSInput.py pids_root.cfg
+mv PIDS_STATIC Makela_static
+
+
+rm -f .extractDomain*
+rm -f .rasterTo*
+rm -f .maskFromRaster*
+
