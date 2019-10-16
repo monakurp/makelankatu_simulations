@@ -14,7 +14,7 @@ plt.close('all')
 folder = '/home/monakurp/makelankatu_simulations'
 year = 2017
 month = 6
-day = 9
+day = 14
 tod  = 'morning'
 
 

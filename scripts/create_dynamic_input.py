@@ -4,11 +4,11 @@ import os
 import sys
 import datetime as dtime
 from scipy.interpolate import interp1d, interp2d
-import matplotlib.pyplot as plt
 import hdf5storage
 from netcdfTools import createNetcdfVariable
 
-os.chdir(('/home/stromjan/Maps/Scripts/Dynamic'))
+os.chdir(os.path.expanduser("~"))
+os.chdir(('makelankatu_simulations'))
 
 parameter = True
 variable  = False
@@ -54,7 +54,9 @@ if grid_type == 'real':
 
   dx_N03 = 1.0
   dy_N03 = 1.0
-  dz_N03 = 1.0    
+  dz_N03 = 1.0   
+  
+  dt = 3600.0
 
 elif grid_type == 'test':
   nx = 15
@@ -76,22 +78,24 @@ elif grid_type == 'test':
   dx_N03 = 2.0
   dy_N03 = 2.0
   dz_N03 = 2.0 
+  
+  dt = 360.0
 
 ntimesteps = end_hour - start_hour + 1
-dt = 3600.0
+
 # -------------------------------------------------------------------------------------------------#
 
 #%% Filenames
 
 datestr = '{}{:02d}{:02d}'.format( sim_year, sim_month, sim_day )
 
-fname_full_backup = '/home/stromjan/Maps/Scripts/Dynamic/meps_mbr0_full_backup_2_5km_{}T00Z.nc'.format( datestr, sim_time, datestr )
-fname_subset      = '/home/stromjan/Maps/Scripts/Dynamic/meps_subset_2_5km_{}T00Z.nc'.format( datestr, sim_time, datestr )
-fname_soil        = '/home/stromjan/Maps/Scripts/Dynamic/reanalysis_soil.nc'
-fname_adchem      = '/home/stromjan/Maps/Scripts/Dynamic/09062017.mat'
+fname_full_backup = 'source_data/cases/{}_{}/meps_mbr0_full_backup_2_5km_{}T00Z.nc'.format( datestr, sim_time, datestr )
+fname_subset      = 'source_data/cases/{}_{}/meps_subset_2_5km_{}T00Z.nc'.format( datestr, sim_time, datestr )
+fname_soil        = 'source_data/ERA5_reanalysis_soil_cropped.nc'
+fname_adchem      = 'source_data/ADCHEM_data/09062017.mat'
 
-fname_out     = '/home/stromjan/Maps/Scripts/Dynamic/PIDS_DYNAMIC_{}'.format( datestr, sim_time, grid_type )
-fname_out_N03 = '/home/stromjan/Maps/Scripts/Dynamic/PIDS_DYNAMIC_{}_N03'.format( datestr, sim_time, grid_type )
+fname_out     = 'input_data_to_palm/cases/{}_{}/PIDS_DYNAMIC_{}'.format( datestr, sim_time, grid_type )
+fname_out_N03 = 'input_data_to_palm/cases/{}_{}/PIDS_DYNAMIC_{}_N03'.format( datestr, sim_time, grid_type )
 
 dsout     = nc.Dataset( fname_out, 'w' )
 dsout_N03 = nc.Dataset( fname_out_N03, 'w' )
@@ -106,7 +110,7 @@ for dsouti in [dsout, dsout_N03]:
   dsouti.origin_lat     = orig[0]
   dsouti.origin_lon     = orig[1]
   dsouti.origin_z       = 0.0
-  dsouti.origin_time = "{}-{:02d}-{:02d} {:02d}:00:00 +{:02d}".format(sim_year, sim_month, sim_day, start_hour, plusUTC) #Was previously missing
+  dsouti.origin_time    = "{}-{:02d}-{:02d} {:02d}:00:00 +{:02d}".format(sim_year, sim_month, sim_day, start_hour, plusUTC) #Was previously missing
   dsouti.palm_version   = "6.0"
   dsouti.rotation_angle = 0.0
 
@@ -312,10 +316,10 @@ xu = np.linspace( dx, lx - dx, nx)
 y = np.linspace( 0.5*dy, ly - 0.5*dy, ny+1)
 yv = np.linspace( dy, ly - dy, ny)
 
-# time:
-time_palm = np.arange(0.0, (ntimesteps-1)*dt+1, dt )
-if grid_type=='test':
-  time_palm = 0.1*time_palm
+# time: given in seconds from midnight in UTC time!
+seconds_in_hour = 3600.0
+dynamic_time_start = ( start_hour - plusUTC ) * seconds_in_hour
+time_palm = np.arange( dynamic_time_start, dynamic_time_start + (ntimesteps-1)*dt+1, dt )
 
 
 #%% Save dimensions to the dynamic input file:
