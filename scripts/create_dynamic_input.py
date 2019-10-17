@@ -26,10 +26,7 @@ end_hour   = 9 #9
 plusUTC    = 3 # 2 h
 sim_time   = 'morning' #'morning'
 
-if sim_month==6 and sim_day==9:
-  orig     = [60.1663312, 24.873065935] # 900 m shift to the left
-else:
-  orig     = [60.1663312,24.8895075] 
+orig     = [60.1663312, 24.873065935] # 900 m shift to the left, was 24.8895075
 
 # PALM grid
 
@@ -93,6 +90,7 @@ fname_full_backup = 'source_data/cases/{}_{}/meps_mbr0_full_backup_2_5km_{}T00Z.
 fname_subset      = 'source_data/cases/{}_{}/meps_subset_2_5km_{}T00Z.nc'.format( datestr, sim_time, datestr )
 fname_soil        = 'source_data/ERA5_reanalysis_soil_cropped.nc'
 fname_adchem      = 'source_data/ADCHEM_data/09062017.mat'
+fname_soiltype    = 'input_data_to_palm/soil_root.npz'
 
 fname_out     = 'input_data_to_palm/cases/{}_{}/PIDS_DYNAMIC_{}'.format( datestr, sim_time, grid_type )
 fname_out_N03 = 'input_data_to_palm/cases/{}_{}/PIDS_DYNAMIC_{}_N03'.format( datestr, sim_time, grid_type )
@@ -224,6 +222,7 @@ R = 287.0 # J/kg/K
 g0 = 9.80665 # m/s2
 T_avg = 0.5 * ( T[:,0:-1,:,:] + T[:,1::,:,:] )
 
+# geopotential height
 Z = np.zeros( [ ntimesteps, len(hybrid), len(lats), len(lons) ] ) + np.nan
 
 for t in range( ntimesteps ):
@@ -275,17 +274,13 @@ for i in range( len( zsoil ) ):
   soil_t[i]  = soil['stl{}'.format(i+1)][ti,lati,loni]
   soil_m[i] = soil['swvl{}'.format(i+1)][ti,lati,loni]
 
-
-#soil_t = [282.16, 282.09, 281.95, 281.82, 281.28, 280.51, 278.94, 275.37]
-#soil_m = [0.322, 0.322, 0.324, 0.325, 0.331, 0.340, 0.357, 0.403] #Last one was 0.404, maximum for coarse soil is 0.403
-
 #fitting a curve to get soil variables at PALM soil levels
-soil_t_fit = np.poly1d(np.polyfit(zsoil,soil_t,2))
-soil_m_fit = np.poly1d(np.polyfit(zsoil,soil_m,2))
+soil_t_fit = np.poly1d( np.polyfit( zsoil, soil_t, 2 ) )
+soil_m_fit = np.poly1d( np.polyfit( zsoil, soil_m, 2 ) )
+soil_t = soil_t_fit( zsoil_PALM )
+soil_m = soil_m_fit( zsoil_PALM )
+
 zsoil = zsoil_PALM
-soil_t = soil_t_fit(zsoil)
-soil_m = soil_m_fit(zsoil)
-soil_m[soil_m > 0.403] = 0.403 #check that soil_m doesn't exceed minimum saturation moisture of soil_types
 
 #%% PALM grid:
 
@@ -385,12 +380,24 @@ timev.long_name = "time"
 
 #%% Create horizontal homogeneous fields of soil temperature and moisture
 
+soil_type = np.load( fname_soiltype )['R']
+
+id_soil_type = np.arange( 1, 6+1, 1 )
+max_soil_water_content = np.array([ 0.403, 0.439, 0.430, 0.520, 0.614, 0.766 ])
+
 init_soil_t = np.zeros( [len(zsoil), ny+1, nx+1], dtype=float )
 init_soil_m = np.zeros( [len(zsoil), ny+1, nx+1], dtype=float )
 
 for i in range( len( zsoil ) ):
   init_soil_t[i,:,:] = soil_t[i]
   init_soil_m[i,:,:] = soil_m[i]
+
+# Check that the maximum value for the soil water content is not exceeded
+for i in range( nx+1 ):
+  for j in range( ny+1 ):
+    for isl in range( len( id_soil_type ) ):
+      if soil_type[j,i]== id_soil_type[isl]:
+        init_soil_m[init_soil_m[:,j,i]>max_soil_water_content[isl],j,i] = max_soil_water_content[isl]  
 
 #%% Interpolate variable fields to PALM grid
 
