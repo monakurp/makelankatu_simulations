@@ -14,7 +14,7 @@ plt.close('all')
 folder = '/home/monakurp/makelankatu_simulations'
 year = 2017
 month = 6
-day = 14
+day = 9
 tod  = 'morning'
 
 
@@ -62,6 +62,12 @@ if ( date=='20170609' and tod=='morning' ):
   start_min = 16
   end_h     = 9
   e_min     = 15
+
+elif ( date=='20170614' and tod=='morning' ):
+  start_h   = 7
+  start_min = 9
+  end_h     = 8
+  e_min     = 58
   
 elif ( date=='20171207' and tod=='morning' ):
   start_h   = 7
@@ -202,11 +208,15 @@ QF_per_capita = ( a0 + a2*HDD )
 
 #%% Calculate pollutant emissions
 
-emission_name = ['NO','NO2','OCSV','RH','H2SO4','NH3']
-composition_name = ['BC','OC','H2SO4']
+emission_name    = ['NO                       ','NO2                      ',
+                    'OCSV                     ','RH                       ',
+                    'H2SO4                    ','NH3                      ']  
+composition_name = ['BC                       ','OC                       ', 
+                    'H2SO4                    '] 
 
 nspecies = len( emission_name )
 ncc = len( composition_name )
+ncat = np.arange( 1, 1.1, 1 )
 
 emission_index = np.linspace( 1, nspecies, nspecies )
 composition_index = np.linspace( 1, ncc, ncc )
@@ -230,12 +240,12 @@ tr[:,6] = emission[' traffic from city (veh/h)'] * st_traffic_relative[6]
 # EF [g/m/veh] * TR[veh/h] * 1/3600 h/s * 1 / street_width --> g/m2/s
 
 emission_values = np.zeros( [len(emission),1, ny,nx,nspecies] ) + 0.0
-aerosol_emission_values = np.zeros( [len(emission), ny,nx,nbins] ) + 0.0
+aerosol_emission_values = np.zeros( [len(emission), ny, nx, len( ncat ) ] ) + 0.0
 heat_traffic = np.zeros( [len(emission),ny,nx] ) + 0.0
 
 si = 0
 for s in emission_name:
-  sname = emission_name[si]
+  sname = emission_name[si].strip()
   factor = 1.0 / 3600.0
   if sname == 'RH':
     sname = 'alkanes'
@@ -246,30 +256,26 @@ for s in emission_name:
     EF = np.array( emission[' {}'.format(sname)] )[t] # g/m/veh
     for i in range( len( st_traffic_relative ) ):
       TR = tr[t,i]  # veh/s
-      emission_values[t,0,st_map==st_index[i],si] = EF * TR * 1./st_width[i] * factor
+      is_street = ( st_map==st_index[i] )
+      emission_values[t,0,is_street,si] = EF * TR * 1./st_width[i] * factor
       if si==0:
         bin_limits, _, EF_bin = psd_from_data( file_psd_shape, np.array( emission[' PM'] )[t], 10, 'mass', False )
-        aerosol_emission_values[t,st_map==st_index[i],:] = EF_bin * TR * 1./st_width[i] * factor
-        
-        heat_traffic[t,st_map==st_index[i]] = np.array( emission[' E (heat from traffic)'] )[t] * TR * 1./st_width[i] * factor # J/(m*veh) * veh/s * 1/m = J/m2s = W/m2
+        aerosol_emission_values[t,is_street,:] = np.sum( EF_bin ) * TR * 1./st_width[i] * factor
+        heat_traffic[t,is_street] = np.array( emission[' E (heat from traffic)'] )[t] * TR * 1./st_width[i] * factor # J/(m*veh) * veh/s * 1/m = J/m2s = W/m2
   si += 1
+  
+number_fracs = np.zeros([ len( ncat ), nbins ])
+number_fracs[0,:] += EF_bin / np.sum( EF_bin )
 
-emission_mass_fracs = np.zeros( ncc, dtype = float )
-emission_mass_fracs[0] = np.mean( emission[' BC'] / emission[' PM'] )
-emission_mass_fracs[1] = np.mean( emission[' OC'] / emission[' PM'] )
-emission_mass_fracs[2] = 1.0 - np.sum( emission_mass_fracs[0:-1] )
+emission_mass_fracs = np.zeros( [len( ncat ), ncc], dtype = float )
+emission_mass_fracs[0,0] = np.mean( emission[' BC'] / emission[' PM'] )
+emission_mass_fracs[0,1] = np.mean( emission[' OC'] / emission[' PM'] )
+emission_mass_fracs[0,2] = 1.0 - np.sum( emission_mass_fracs[0:-1] )
 
 dmid = np.sqrt( bin_limits[0:-1]*bin_limits[1::] )
 
-fig4 = plt.figure()
-cols = mpl.pylab.cm.rainbow( np.linspace( 0., 1.0, len( st_traffic_relative ) ) )
-for t in range( len(emission) ):
-  ax4 = fig4.add_subplot(1,len(emission),t+1)
-  for i in range( len( st_traffic_relative ) ):
-    ax4.loglog( dmid, np.mean(aerosol_emission_values[t,st_map==st_index[i],:], axis=0), 
-                label=st_names[i], color=cols[i] )
-  plt.legend()
-  
+emission_values[emission_values==0] = -9999.0
+aerosol_emission_values[aerosol_emission_values==0] = -9999.0
   
 #%% Save into a file: aerosol and gas emissions
 
@@ -278,8 +284,8 @@ pids_salsa  = nc.Dataset( 'input_data_to_palm/cases/{}_{}/PIDS_SALSA_N03'.format
 pids_chem   = nc.Dataset( 'input_data_to_palm/cases/{}_{}/PIDS_CHEM_N03'.format( date, tod ), 'w', format='NETCDF4' )
 
 dims = ['x','y']
-max_string_length = np.linspace( 1, 5, 5 )
-time_emission = np.arange(0.0,len(emission)*3600.0,3600.0)
+max_string_length = np.linspace( 1, 25, 25 )
+time_emission = np.arange( 0.0, len( emission )*3600.0, 3600.0 )
 
 for dsout in [pids_salsa, pids_chem]:
   
@@ -328,12 +334,33 @@ ei.standard_name = 'emission_index'
 
 # namelist of all emitted species:
 en = pids_chem.createVariable( 'emission_name', 'S1', ('nspecies','max_string_length',) )
-en[:] = map(lambda x : list(x), emission_name)
+en[:] = list( map(lambda x : list(x), emission_name ) )
 en.long_name = 'emission species name'
 en.standard_name = 'emission_name'
 
+# gas emissions
+ev = pids_chem.createVariable( 'emission_values', 'f4', ('time','y','x','nspecies',), fill_value=-9999.0 )
+evmod = np.copy( emission_values[:,:,::-1,:,:] )
+ev[:] = evmod
+ev.units = 'g/m2/s'                      
+ev.long_name = 'emission values'
+ev.standard_name = 'emission_values'
+ev.lod = 2
+
 
 # Only for salsa:    
+
+# category number
+pids_salsa.createDimension( 'ncat', len( ncat ) )
+ncati = pids_salsa.createVariable( 'ncat', 'i4', ('ncat',) )
+ncati[:] = ncat
+ 
+# category name
+emission_category_name = ['traffic exhaust          ']
+ecn = pids_salsa.createVariable( 'emission_category_name', 'S1', ('ncat','max_string_length',) )
+ecn[:] = list( map( lambda x : list(x), emission_category_name ) )
+ecn.long_name = 'emission category name'
+ecn.standard_name = 'emission_category_name'
 
 # indices of chemical components:          
 pids_salsa.createDimension( 'composition_index', len( composition_index ) )                  
@@ -342,12 +369,13 @@ cai[:] = composition_index
                           
 # namelist of chemical components:                            
 cn = pids_salsa.createVariable( 'composition_name', 'S1', ('composition_index','max_string_length',) )
-cn[:] = map(lambda x : list(x), composition_name)
+cn[:] = list( map(lambda x : list(x), composition_name ) )
 cn.long_name = 'aerosol composition name'
 cn.standard_name = 'composition_name'  
          
 # emission mass fractions                 
-ca = pids_salsa.createVariable( 'emission_mass_fracs', 'f4', ('composition_index',), fill_value=-9999.0 )  
+ca = pids_salsa.createVariable( 'emission_mass_fracs', 'f4', ('ncat','composition_index',),
+                                fill_value=-9999.0 )  
 ca.units = ''
 ca[:] = emission_mass_fracs
 ca.long_name = 'mass fractions of chemical components in aerosol emissions'
@@ -359,17 +387,16 @@ dmidi = pids_salsa.createVariable( 'Dmid', 'f4', ('Dmid',))
 dmidi[:] = dmid
 dmidi.units = 'm'
 
-# gas emissions
-ev = pids_chem.createVariable( 'emission_values', 'f4', ('time','y','x','nspecies',), fill_value=-9999.0 )
-evmod = np.copy( emission_values[:,:,::-1,:,:] )
-ev[:] = evmod
-ev.units = 'g/m2/s'                      
-ev.long_name = 'emission values'
-ev.standard_name = 'emission_values'
-ev.lod = 2
+# Number fractions per bin in aerosol emissions:                    
+enf = pids_salsa.createVariable( 'emission_number_fracs', 'f4', ('ncat','Dmid',), fill_value=-9999.0 )
+enf.units = ''
+enf[:] = number_fracs
+enf.long_name = 'number fractions of aerosol size bins in aerosol emissions'
+enf.standard_name = 'emission_number_fractions' 
 
 # aerosol emissions
-aev = pids_salsa.createVariable( 'aerosol_emission_values', 'f4', ('time','y','x','Dmid',), fill_value=-9999.0 )
+aev = pids_salsa.createVariable( 'aerosol_emission_values', 'f4', ('time','y','x','ncat',), 
+                                 fill_value=-9999.0 )
 aevmod = np.copy( aerosol_emission_values[:,::-1,:,:] )
 aev[:] = aevmod
 aev.units = '#/m2/s'
