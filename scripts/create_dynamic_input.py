@@ -24,9 +24,11 @@ sim_day    = 9 # 7
 sim_time   = 'morning'
 datestr    = '{}{:02d}{:02d}'.format( sim_year, sim_month, sim_day )
 
+flow_spinup_min = 15
+
 if ( datestr=='20170609' and sim_time=='morning' ):
   start_hour = 7
-  start_min  = 16 - 16
+  start_min  = 15 - flow_spinup_min
   end_hour   = 9
   end_min    = 15
   plusUTC    = 3
@@ -99,6 +101,8 @@ elif grid_type == 'test':
   dt = 360.0
 
 ntimesteps = end_hour - start_hour + 1
+if end_min > 0:
+  ntimesteps += 1
 
 # -------------------------------------------------------------------------------------------------#
 
@@ -174,6 +178,8 @@ for t in range( len( time ) ):
     ss = t
   if ( timestring[t].hour + plusUTC ) == end_hour: 
     ee = t
+if end_min > 0:
+  ee += 1
     
 longitude = np.array( full_backup['longitude'] )
 if ( np.array( subset['longitude'][:] ) != longitude[:] ).any():
@@ -290,7 +296,7 @@ soil_m = np.zeros( len(zsoil), dtype=float )
 
 for t in range( len( soil_timestr ) ):
   if ( soil_timestr[t].month==sim_month and soil_timestr[t].day==sim_day and
-       soil_timestr[t].hour==start_hour+1-plusUTC ): # plus 1 because the first 15 min is excluded
+       soil_timestr[t].hour==start_hour-plusUTC ):
     ti1 = t
   if ( soil_timestr[t].month==sim_month and soil_timestr[t].day==sim_day and
        soil_timestr[t].hour==end_hour-plusUTC ):  
@@ -298,7 +304,7 @@ for t in range( len( soil_timestr ) ):
 
 for i in range( len( zsoil ) ):
   soil_t[i] = np.nanmean( soil['stl{}'.format(i+1)][ti1:ti2+1,lati,loni] )
-  soil_m[i] = np.nanmean( soil['stl{}'.format(i+1)][ti1:ti2+1,lati,loni] )
+  soil_m[i] = np.nanmean( soil['swvl{}'.format(i+1)][ti1:ti2+1,lati,loni] )
 
 #fitting a curve to get soil variables at PALM soil levels
 soil_t_fit = np.poly1d( np.polyfit( zsoil, soil_t, 2 ) )
@@ -341,8 +347,8 @@ yv = np.linspace( dy, ly - dy, ny)
 seconds_in_hour = 3600.0
 dynamic_time_start = ( start_hour - plusUTC ) * seconds_in_hour
 time_palm = np.arange( dynamic_time_start, dynamic_time_start + (ntimesteps-1)*dt+1, dt )
-time_palm[0] += start_min*60.0
-time_palm[-1] += end_min*60.0
+#time_palm[0] += start_min*60.0
+#time_palm[-1] += end_min*60.0
 
 #%% Save dimensions to the dynamic input file:
 
@@ -410,7 +416,7 @@ timev.long_name = "time"
 soil_type = np.load( fname_soiltype )['R']
 
 id_soil_type = np.arange( 1, 6+1, 1 )
-max_soil_water_content = np.array([ 0.403, 0.439, 0.430, 0.520, 0.614, 0.766 ])
+max_soil_water_content = np.array([ 0.402, 0.438, 0.429, 0.519, 0.613, 0.765 ])
 
 init_soil_t = np.zeros( [len(zsoil), ny+1, nx+1], dtype=float )
 init_soil_m = np.zeros( [len(zsoil), ny+1, nx+1], dtype=float )
@@ -635,7 +641,7 @@ del arrays
 # init_soil_t
 ncvar = dsout.createVariable( 'init_soil_t', 'f4', ( 'zsoil', 'y', 'x' ), 
                               fill_value=-9999.0 )
-ncvar[:] = init_soil_t
+ncvar[:] = init_soil_t[:,::-1,:]
 ncvar.units = "K"
 ncvar.source = "MEPS analysis for 20170609"
 ncvar.long_name = "initial soil temperature"
@@ -645,7 +651,7 @@ ncvar.lod = 2
 # init_soil_m
 ncvar = dsout.createVariable( 'init_soil_m', 'f4', ( 'zsoil', 'y', 'x' ), 
                               fill_value=-9999.0 )
-ncvar[:] = init_soil_m
+ncvar[:] = init_soil_m[:,::-1,:]
 ncvar.units = "m^3/m^3"
 ncvar.source = "MEPS analysis for 20170609"
 ncvar.long_name = "initial soil moisture"
@@ -702,7 +708,7 @@ for t in range( len( time ) ):
     if timestring[t] == adchem_timestring[tt]:
       if ( timestring[t].hour + plusUTC ) == start_hour:  ### CHECK plusutc FROM PONTUS!!!
         ss = tt
-      if ( timestring[t].hour + plusUTC ) == end_hour:  ### CHECK plusutc FROM PONTUS!!! 
+      if ( timestring[t].hour + plusUTC ) == end_hour+1:  ### CHECK plusutc FROM PONTUS!!! 
         ee = tt
 
 ncc = len( adchem['composition_name'][0] )
