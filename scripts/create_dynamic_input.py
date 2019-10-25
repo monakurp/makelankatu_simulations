@@ -17,14 +17,34 @@ variable  = False
 # PROVIDE THESE:
 # -------------------------------------------------------------------------------------------------#
 
-# Simulation time:
+# Simulation time: start of drone measurements - ~15min --> end of drone measurements
 sim_year   = 2017
 sim_month  = 6 # 12
 sim_day    = 9 # 7
-start_hour = 7 #7
-end_hour   = 9 #9
-plusUTC    = 3 # 2 h
-sim_time   = 'morning' #'morning'
+sim_time   = 'morning'
+datestr    = '{}{:02d}{:02d}'.format( sim_year, sim_month, sim_day )
+
+if ( datestr=='20170609' and sim_time=='morning' ):
+  start_hour = 7
+  start_min  = 16 - 16
+  end_hour   = 9
+  end_min    = 15
+  plusUTC    = 3
+
+elif ( datestr=='20170614' and sim_time=='morning' ):
+  start_hour = 7
+  start_min  = 9
+  end_hour   = 8
+  end_min    = 58
+  plusUTC    = 3
+  
+elif ( datestr=='20171207' and sim_time=='morning' ):
+  start_hour = 7
+  start_min  = 20
+  end_hour   = 9
+  end_min    = 14
+  plusUTC    = 2
+
 
 orig     = [60.1663312, 24.873065935] # 900 m shift to the left, was 24.8895075
 
@@ -84,16 +104,18 @@ ntimesteps = end_hour - start_hour + 1
 
 #%% Filenames
 
-datestr = '{}{:02d}{:02d}'.format( sim_year, sim_month, sim_day )
-
-fname_full_backup = 'source_data/cases/{}_{}/meps_mbr0_full_backup_2_5km_{}T00Z.nc'.format( datestr, sim_time, datestr )
-fname_subset      = 'source_data/cases/{}_{}/meps_subset_2_5km_{}T00Z.nc'.format( datestr, sim_time, datestr )
+fname_full_backup = 'source_data/cases/{}_{}/meps_mbr0_full_backup_2_5km_{}T00Z.nc'.format( \
+                                       datestr, sim_time, datestr )
+fname_subset      = 'source_data/cases/{}_{}/meps_subset_2_5km_{}T00Z.nc'.format( \
+                                       datestr, sim_time, datestr )
 fname_soil        = 'source_data/ERA5_reanalysis_soil_cropped.nc'
 fname_adchem      = 'source_data/ADCHEM_data/09062017.mat'
 fname_soiltype    = 'input_data_to_palm/soil_root.npz'
 
-fname_out     = 'input_data_to_palm/cases/{}_{}/PIDS_DYNAMIC_{}'.format( datestr, sim_time, grid_type )
-fname_out_N03 = 'input_data_to_palm/cases/{}_{}/PIDS_DYNAMIC_{}_N03'.format( datestr, sim_time, grid_type )
+fname_out     = 'input_data_to_palm/cases/{}_{}/PIDS_DYNAMIC_{}'.format( \
+                                          datestr, sim_time, grid_type )
+fname_out_N03 = 'input_data_to_palm/cases/{}_{}/PIDS_DYNAMIC_{}_N03'.format( \
+                                          datestr, sim_time, grid_type )
 
 dsout     = nc.Dataset( fname_out, 'w' )
 dsout_N03 = nc.Dataset( fname_out_N03, 'w' )
@@ -108,7 +130,8 @@ for dsouti in [dsout, dsout_N03]:
   dsouti.origin_lat     = orig[0]
   dsouti.origin_lon     = orig[1]
   dsouti.origin_z       = 0.0
-  dsouti.origin_time    = "{}-{:02d}-{:02d} {:02d}:00:00 +{:02d}".format(sim_year, sim_month, sim_day, start_hour, plusUTC) #Was previously missing
+  dsouti.origin_time    = "{}-{:02d}-{:02d} {:02d}:{:02d}:00 +{:02d}".format( \
+                           sim_year, sim_month, sim_day, start_hour, start_min, plusUTC) #Was previously missing
   dsouti.palm_version   = "6.0"
   dsouti.rotation_angle = 0.0
 
@@ -259,20 +282,23 @@ if grid_type=='real':
   loni = np.where( ( soil_lon > lons[0] ) & ( soil_lon < lons[-1]+0.25 ) )[0][0]
   lati = np.where( ( soil_lat > lats[0] ) & ( soil_lat < lats[-1]+0.25 ) )[0][0]
 else:
-  loni = 100
-  lati = 119
+  loni = 0
+  lati = 0
 
 soil_t = np.zeros( len(zsoil), dtype=float )
 soil_m = np.zeros( len(zsoil), dtype=float )
 
-if sim_month < 7:
-  ti = 0
-else:
-  ti = 1
+for t in range( len( soil_timestr ) ):
+  if ( soil_timestr[t].month==sim_month and soil_timestr[t].day==sim_day and
+       soil_timestr[t].hour==start_hour+1-plusUTC ): # plus 1 because the first 15 min is excluded
+    ti1 = t
+  if ( soil_timestr[t].month==sim_month and soil_timestr[t].day==sim_day and
+       soil_timestr[t].hour==end_hour-plusUTC ):  
+    ti2 = t
 
 for i in range( len( zsoil ) ):
-  soil_t[i]  = soil['stl{}'.format(i+1)][ti,lati,loni]
-  soil_m[i] = soil['swvl{}'.format(i+1)][ti,lati,loni]
+  soil_t[i] = np.nanmean( soil['stl{}'.format(i+1)][ti1:ti2+1,lati,loni] )
+  soil_m[i] = np.nanmean( soil['stl{}'.format(i+1)][ti1:ti2+1,lati,loni] )
 
 #fitting a curve to get soil variables at PALM soil levels
 soil_t_fit = np.poly1d( np.polyfit( zsoil, soil_t, 2 ) )
@@ -315,7 +341,8 @@ yv = np.linspace( dy, ly - dy, ny)
 seconds_in_hour = 3600.0
 dynamic_time_start = ( start_hour - plusUTC ) * seconds_in_hour
 time_palm = np.arange( dynamic_time_start, dynamic_time_start + (ntimesteps-1)*dt+1, dt )
-
+time_palm[0] += start_min*60.0
+time_palm[-1] += end_min*60.0
 
 #%% Save dimensions to the dynamic input file:
 
@@ -906,7 +933,7 @@ for t in range( ee-ss+1 ):
 # SAVE VARIABLES TO PIDS_DYNAMIC:  
 
 # H2SO4: 
-h2so4_adchem = createNetcdfVariable( dsout_N03, init_h2so4, 'init_atmosphere_h2so4', len(z_N03), 
+h2so4_adchem = createNetcdfVariable( dsout_N03, init_h2so4, 'init_atmosphere_H2SO4', len(z_N03), 
                                      '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
 h2so4_adchem.long_name = "initial vertical profile of H2SO4" 
 
@@ -915,7 +942,7 @@ for nv in ls_names:
   dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
   for i in range( len( ls_dims[nvi] ) ):
     dummy[:,:,i] = lsf_h2so4
-  namev = 'ls_forcing_{}_h2so4'.format( nv )
+  namev = 'ls_forcing_{}_H2SO4'.format( nv )
   lsf_h2so4v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', 
                                      ('time','z',ls_dimsname[nvi],), 
                                      variable, fill_value=-9999.0  )   
@@ -926,14 +953,14 @@ dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )
 for j in range( len( y_N03 ) ):
   for i in range( len( x_N03 ) ):
     dummy[:,j,i] = lsf_h2so4[:,-1]
-namev = 'ls_forcing_top_h2so4'
+namev = 'ls_forcing_top_H2SO4'
 lsf_h2so4v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',), 
                                    variable, fill_value=-9999.0  )   
 lsf_h2so4v.long_name = "background concentration of H2SO4"
 
 
 # HNO3:
-hno3_adchem = createNetcdfVariable( dsout_N03, init_hno3, 'init_atmosphere_hno3', len(z_N03), 
+hno3_adchem = createNetcdfVariable( dsout_N03, init_hno3, 'init_atmosphere_HNO3', len(z_N03), 
                                     '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
 hno3_adchem.long_name = "initial vertical profile of HNO3"    
 
@@ -942,7 +969,7 @@ for nv in ls_names:
   dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
   for i in range( len( ls_dims[nvi] ) ):
     dummy[:,:,i] = lsf_hno3
-  namev = 'ls_forcing_{}_hno3'.format( nv )
+  namev = 'ls_forcing_{}_HNO3'.format( nv )
   lsf_hno3v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', 
                                    ('time','z',ls_dimsname[nvi],), 
                                     variable, fill_value=-9999.0  )   
@@ -953,14 +980,14 @@ dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )
 for j in range( len( y_N03 ) ):
   for i in range( len( x_N03 ) ):
     dummy[:,j,i] = lsf_hno3[:,-1]  
-namev = 'ls_forcing_top_hno3'
+namev = 'ls_forcing_top_HNO3'
 lsf_hno3v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',),
                                   variable, fill_value=-9999.0  )   
 lsf_hno3v.long_name = "background concentration of HNO3"
 
 
 # NH3:
-nh3_adchem = createNetcdfVariable( dsout_N03, init_nh3, 'init_atmosphere_nh3', len(z_N03), 
+nh3_adchem = createNetcdfVariable( dsout_N03, init_nh3, 'init_atmosphere_NH3', len(z_N03), 
                                    '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
 nh3_adchem.long_name = "initial vertical profile of NH3"
 
@@ -969,7 +996,7 @@ for nv in ls_names:
   dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
   for i in range( len( ls_dims[nvi] ) ):
     dummy[:,:,i] = lsf_nh3
-  namev = 'ls_forcing_{}_nh3'.format( nv )
+  namev = 'ls_forcing_{}_NH3'.format( nv )
   lsf_nh3v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', 
                                   ('time','z',ls_dimsname[nvi],), 
                                    variable, fill_value=-9999.0  )   
@@ -980,14 +1007,14 @@ dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )
 for j in range( len( y_N03 ) ):
   for i in range( len( x_N03 ) ):
     dummy[:,j,i] = lsf_nh3[:,-1]
-namev = 'ls_forcing_top_nh3'
+namev = 'ls_forcing_top_NH3'
 lsf_nh3v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',), 
                                  variable, fill_value=-9999.0  )   
 lsf_nh3v.long_name = "background concentration of NH3"
 
 
 # OCSV:
-ocsv_adchem = createNetcdfVariable( dsout_N03, init_ocsv, 'init_atmosphere_ocsv', len(z_N03), 
+ocsv_adchem = createNetcdfVariable( dsout_N03, init_ocsv, 'init_atmosphere_OCSV', len(z_N03), 
                                     '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
 ocsv_adchem.long_name = "initial vertical profile of OCSV"
 
@@ -996,7 +1023,7 @@ for nv in ls_names:
   dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
   for i in range( len( ls_dims[nvi] ) ):
     dummy[:,:,i] = lsf_ocsv
-  namev = 'ls_forcing_{}_ocsv'.format( nv )
+  namev = 'ls_forcing_{}_OCSV'.format( nv )
   lsf_ocsvv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4',
                                    ('time','z',ls_dimsname[nvi],), 
                                     variable, fill_value=-9999.0  )   
@@ -1007,14 +1034,14 @@ dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )
 for j in range( len( y_N03 ) ):
   for i in range( len( x_N03 ) ):
     dummy[:,j,i] = lsf_ocsv[:,-1]
-namev = 'ls_forcing_top_ocsv'
+namev = 'ls_forcing_top_OCSV'
 lsf_ocsvv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',), 
                                   variable, fill_value=-9999.0  )   
 lsf_ocsvv.long_name = "background concentration of OCSV"
 
 
 # OCNV:
-ocnv_adchem = createNetcdfVariable( dsout_N03, init_ocnv, 'init_atmosphere_ocnv', len(z_N03), 
+ocnv_adchem = createNetcdfVariable( dsout_N03, init_ocnv, 'init_atmosphere_OCNV', len(z_N03), 
                                     '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
 ocnv_adchem.long_name = "initial vertical profile of OCNV"  
 
@@ -1023,7 +1050,7 @@ for nv in ls_names:
   dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
   for i in range( len( ls_dims[nvi] ) ):
     dummy[:,:,i] = lsf_ocnv
-  namev = 'ls_forcing_{}_ocnv'.format( nv )
+  namev = 'ls_forcing_{}_OCNV'.format( nv )
   lsf_ocnvv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', 
                                    ('time','z',ls_dimsname[nvi],),
                                     variable, fill_value=-9999.0  )   
@@ -1034,7 +1061,7 @@ dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )
 for j in range( len( y_N03 ) ):
   for i in range( len( x_N03 ) ):
     dummy[:,j,i] = lsf_ocnv[:,-1]
-namev = 'ls_forcing_top_ocnv'
+namev = 'ls_forcing_top_OCNV'
 lsf_ocnvv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',), 
                                   variable, fill_value=-9999.0  )   
 lsf_ocnvv.long_name = "background concentration of OCNV"

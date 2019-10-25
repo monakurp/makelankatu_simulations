@@ -6,7 +6,7 @@ import os
 import pandas as pd
 from scipy.ndimage import binary_erosion, binary_dilation
 from pylab import cm
-from psdLib import psd_from_data
+from psdLib import psd_from_data, define_bins
 import netCDF4 as nc
 
 plt.close('all')
@@ -58,22 +58,25 @@ file_child_st                  = 'input_data_to_palm/street_types_child.npz'
 #%% Exact hours
 
 if ( date=='20170609' and tod=='morning' ):
-  start_h   = 7
-  start_min = 16
-  end_h     = 9
-  e_min     = 15
+  start_hour = 7
+  start_min  = 16
+  end_hour   = 9
+  end_min    = 15
+  plusUTC    = 3
 
 elif ( date=='20170614' and tod=='morning' ):
-  start_h   = 7
-  start_min = 9
-  end_h     = 8
-  e_min     = 58
+  start_hour = 7
+  start_min  = 9
+  end_hour   = 8
+  end_min    = 58
+  plusUTC    = 3
   
 elif ( date=='20171207' and tod=='morning' ):
-  start_h   = 7
-  start_min = 20
-  end_h     = 9
-  e_min     = 14
+  start_hour = 7
+  start_min  = 20
+  end_hour   = 9
+  end_min    = 14
+  plusUTC    = 2
 
 #%% Read in input files
 
@@ -86,8 +89,8 @@ child_st                  = np.load( file_child_st )
 emission = pd.read_csv( file_emissions, header=1 )
 emission.rename( columns=lambda x: x.strip() )
 emission['start_date'] = pd.to_datetime( emission['start time'] )
-mask = ( emission['start_date'] >= '{}-{}-{} {}:00:00'.format( date[0:4],date[4:6],date[6::],start_h ) ) & \
-       ( emission['start_date'] <= '{}-{}-{} {}:00:00'.format( date[0:4],date[4:6],date[6::],end_h+1 ) )
+mask = ( emission['start_date'] >= '{}-{}-{} {}:00:00'.format( date[0:4],date[4:6],date[6::],start_hour ) ) & \
+       ( emission['start_date'] <= '{}-{}-{} {}:00:00'.format( date[0:4],date[4:6],date[6::],end_hour+1 ) )
 emission = emission.loc[mask]  # select only hours needed
 
 # Heating degree days
@@ -222,6 +225,9 @@ emission_index = np.linspace( 1, nspecies, nspecies )
 composition_index = np.linspace( 1, ncc, ncc )
 
 nbins = 10
+nbin = [2, 8]
+reglim = [2.5e-9, 10.0e-9, 2.5e-6]
+dmid, bin_limits = define_bins( nbin, reglim )
 
 # Traffic rates
 tr = np.zeros([len(emission),len(st_traffic_relative)])
@@ -243,6 +249,7 @@ emission_values = np.zeros( [len(emission),1, ny,nx,nspecies] ) + 0.0
 aerosol_emission_values = np.zeros( [len(emission), ny, nx, len( ncat ) ] ) + 0.0
 heat_traffic = np.zeros( [len(emission),ny,nx] ) + 0.0
 
+# Define gas emissions
 si = 0
 for s in emission_name:
   sname = emission_name[si].strip()
@@ -252,18 +259,32 @@ for s in emission_name:
   elif sname == 'H2SO4':
     sname = 'SO2'
     factor = factor * 0.1 # EF_[H2SO4] = 0.1 * EF_[SO2]
-  for t in range( len(emission) ):
+
+  for t in range( len( emission ) ): # time
     EF = np.array( emission[' {}'.format(sname)] )[t] # g/m/veh
-    for i in range( len( st_traffic_relative ) ):
+
+    for i in range( len( st_traffic_relative ) ): # street type
       TR = tr[t,i]  # veh/s
       is_street = ( st_map==st_index[i] )
       emission_values[t,0,is_street,si] = EF * TR * 1./st_width[i] * factor
-      if si==0:
-        bin_limits, _, EF_bin = psd_from_data( file_psd_shape, np.array( emission[' PM'] )[t], 10, 'mass', False )
-        aerosol_emission_values[t,is_street,:] = np.sum( EF_bin ) * TR * 1./st_width[i] * factor
-        heat_traffic[t,is_street] = np.array( emission[' E (heat from traffic)'] )[t] * TR * 1./st_width[i] * factor # J/(m*veh) * veh/s * 1/m = J/m2s = W/m2
+
   si += 1
-  
+
+# Define aerosol adn heat emissions  
+factor = 1.0 / 3600.0
+for t in range( len( emission ) ): # time
+  for i in range( len( st_traffic_relative ) ): # street type
+    TR = tr[t,i]  # veh/s
+    is_street = ( st_map==st_index[i] )
+    if t==0 and i==0:
+      do_plot = True
+    else:
+      do_plot = False
+
+    bin_limits, _, EF_bin = psd_from_data( file_psd_shape, np.array( emission[' PM'] )[t], bin_limits, 'mass', do_plot )
+    aerosol_emission_values[t,is_street,:] = np.sum( EF_bin ) * TR * 1./st_width[i] * factor
+    heat_traffic[t,is_street] = np.array( emission[' E (heat from traffic)'] )[t] * TR * 1./st_width[i] * factor # J/(m*veh) * veh/s * 1/m = J/m2s = W/m2
+
 number_fracs = np.zeros([ len( ncat ), nbins ])
 number_fracs[0,:] += EF_bin / np.sum( EF_bin )
 
@@ -272,7 +293,7 @@ emission_mass_fracs[0,0] = np.mean( emission[' BC'] / emission[' PM'] )
 emission_mass_fracs[0,1] = np.mean( emission[' OC'] / emission[' PM'] )
 emission_mass_fracs[0,2] = 1.0 - np.sum( emission_mass_fracs[0:-1] )
 
-dmid = np.sqrt( bin_limits[0:-1]*bin_limits[1::] )
+#dmid = np.sqrt( bin_limits[0:-1]*bin_limits[1::] )
 
 emission_values[emission_values==0] = -9999.0
 aerosol_emission_values[aerosol_emission_values==0] = -9999.0
@@ -285,7 +306,10 @@ pids_chem   = nc.Dataset( 'input_data_to_palm/cases/{}_{}/PIDS_CHEM_N03'.format(
 
 dims = ['x','y']
 max_string_length = np.linspace( 1, 25, 25 )
-time_emission = np.arange( 0.0, len( emission )*3600.0, 3600.0 )
+
+seconds_in_hour = 3600.0
+time_start = ( start_hour - plusUTC ) * seconds_in_hour
+time_emission = np.arange( time_start, time_start + ( len( emission ) - 1 )*3600.0+1, 3600.0 )
 
 for dsout in [pids_salsa, pids_chem]:
   
@@ -306,7 +330,7 @@ for dsout in [pids_salsa, pids_chem]:
   dsout.createDimension( 'time', len( time_emission ) )
   time_emissionn = dsout.createVariable( 'time', 'f4', ('time',) )
   time_emissionn[:] = time_emission
-  time_emissionn.long_name = 'emission data time step'
+  time_emissionn.long_name = 'emission data time step (seconds in time utc)'
   time_emissionn.standard_name = 'emission_time_step'  
   
   dsout.createDimension( 'max_string_length', len( max_string_length ) )

@@ -17,7 +17,40 @@ mpl.rcParams['legend.fontsize'] = def_fs
 #mpl.rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
 #mpl.rc('text', usetex=True)
 
-def psd_from_data( input_file, EF, nbins, input_type, plot ):
+# - - - - - - - - - - - - - - - - - - - - - - - #
+def define_bins( nbin, reglim ):
+
+  nbins = np.sum( nbin ) # = subrange 1 + subrange 2
+
+  # Log-normal to sectional
+  
+  vlolim = np.zeros( nbins )
+  vhilim = np.zeros( nbins )
+  dmid   = np.zeros( nbins )
+  bin_limits = np.zeros( nbins )
+
+  # Sectional bin limits
+  ratio_d = reglim[1] / reglim[0]
+  for b in range( nbin[0] ):
+    vlolim[b] = np.pi / 6.0 * ( reglim[0] * ratio_d **( float(b) / nbin[0] ) )**3
+    vhilim[b] = np.pi / 6.0 * ( reglim[0] * ratio_d **( float(b+1) / nbin[0] ) )**3
+    dmid[b] = np.sqrt( ( 6.0 * vhilim[b] / np.pi )**0.33333333 * ( 6.0 * vlolim[b] / np.pi )**0.33333333 )                 
+
+  ratio_d = reglim[2] / reglim[1]
+  for b in np.arange( nbin[0], np.sum( nbin ),1 ):
+    c = b-nbin[0]
+    vlolim[b] = np.pi / 6.0 * ( reglim[1] * ratio_d ** ( float(c) / nbin[1] ) )**3
+    vhilim[b] = np.pi / 6.0 * ( reglim[1] * ratio_d ** ( float(c+1) / nbin[1] ) ) ** 3
+    dmid[b] = np.sqrt( ( 6.0 * vhilim[b] / np.pi ) *0.33333333 * ( 6.0 * vlolim[b] / np.pi )**0.33333333 )
+
+  bin_limits = ( 6.0 * vlolim / np.pi )**0.33333333
+  bin_limits = np.append( bin_limits, reglim[-1] )
+
+  return dmid, bin_limits
+
+# - - - - - - - - - - - - - - - - - - - - - - - #
+
+def psd_from_data( input_file, EF, bin_limits, input_type, plot ):
   '''
   psd_from_data( input_file, EF, nbins, input_type )
    input_file (filename)
@@ -25,13 +58,6 @@ def psd_from_data( input_file, EF, nbins, input_type, plot ):
    nbins (number of size bins)
    input_type ('mass' or 'number')
   '''
-
-  #------------------------------------------------------------------------------------------------#
-  # PROVIDE INFORMATION:                                                                           #
-
-  #------------------------------------------------------------------------------------------------#
-  
-  input_type = 'mass'
   
   # Fit manually:
   dpg   = np.array([    4.0,    13.0,   75.0, 220.0]) # in nm
@@ -54,14 +80,7 @@ def psd_from_data( input_file, EF, nbins, input_type, plot ):
   
   # col 0: D (nm)
   # col 1: dN/dlogD (1/cm3)
-  
-  # Calculate basics:
-  if nbins==10:
-    bin_limits = np.array([3.00E-009, 5.48E-009, 1.00E-008, 1.99E-008, 3.98E-008,
-                           7.93E-008, 1.58E-007, 3.15E-007, 6.29E-007, 1.25E-006,
-                           2.5E-6])
-  else:
-    print('ERROR')                         
+                        
   dmid = np.sqrt( bin_limits[0:-1] * bin_limits[1::] ) 
   dmean = 0.5 * ( bin_limits[0:-1] + bin_limits[1::] )     
   
@@ -87,6 +106,7 @@ def psd_from_data( input_file, EF, nbins, input_type, plot ):
     ax.set_ylabel('$dN/dlogD\,\mathrm{(1/cm^3)}$')
     ax.grid(True)
     plt.legend()
+    plt.show()
 
   
   relative_per_bin = psd_sect / np.sum( psd_sect ) 
