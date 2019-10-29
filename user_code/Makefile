@@ -1228,7 +1228,8 @@ user_module.o: \
 	mod_kinds.o \
 	modules.o \
 	salsa_mod.o \
-	surface_mod.o
+	surface_mod.o \
+        pmc_interface_mod.o
 user_spectra.o: \
 	mod_kinds.o \
 	modules.o \

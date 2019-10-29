@@ -456,13 +456,16 @@
     USE salsa_mod,                                                                                 &
         ONLY:  salsa_nesting_offl_init
 
+    USE pmc_interface,                                                                             &
+        ONLY:  cpl_id,
+
     IF ( salsa  .AND.  salsa_dynamic_background_concentrations )  THEN
        CALL salsa_nesting_offl_init
     ENDIF
 
-!    INTEGER(iwp) :: i       !< loop index
-!    INTEGER(iwp) :: j       !< loop index
-!    INTEGER(iwp) :: region  !< index for loop over statistic regions
+    INTEGER(iwp) :: i       !< loop index
+    INTEGER(iwp) :: j       !< loop index
+    INTEGER(iwp) :: region  !< index for loop over statistic regions
 
 !
 !-- Allocate user-defined arrays and set flags for statistic regions.
@@ -487,6 +490,96 @@
 !        ENDDO
 ! 
 !     ENDIF
+
+!-- Parent statistical domains
+
+!-- Next to container
+
+    IF ( statistic_regions >= 1) THEN
+
+       IF ( cpl_id = 2 ) THEN
+
+          region = 1
+
+          rmask(:,:,region) = 0.0_wp
+          DO  i = nxl, nxr
+             IF ( i >= 388 .AND. i <= 390 )  THEN
+                DO  j = nys, nyn
+                   IF ( j >= 348 .AND. j <= 350 )  THEN
+                      rmask(j,i,region) = 1.0_wp
+                   ENDIF
+                ENDDO
+             ENDIF
+          ENDDO
+
+!-- Reference
+
+          region = 2
+
+          rmask(:,:,region) = 0.0_wp
+          DO  i = nxl, nxr
+             IF ( i >= 434 .AND. i <= 436 )  THEN
+                DO  j = nys, nyn
+                   IF ( j >= 372 .AND. j <= 374 )  THEN
+                      rmask(j,i,region) = 1.0_wp
+                   ENDIF
+                ENDDO
+             ENDIF
+          ENDDO
+       ENDIF
+
+!-- Child statistical domains
+
+!-- Next to container
+
+       IF ( cpl_id = 3 ) THEN
+
+          region = 1
+
+          rmask(:,:,region) = 0.0_wp
+          DO  i = nxl, nxr
+             IF ( i >= 303 .AND. i <= 307 )  THEN
+                DO  j = nys, nyn
+                   IF ( i >= 178 .AND. i <= 182 )  THEN
+                      rmask(j,i,region) = 1.0_wp
+                   ENDIF
+                ENDDO
+             ENDIF
+          ENDDO
+       ENDIF
+
+!-- Opposite side of road
+
+          region = 2
+
+          rmask(:,:,region) = 0.0_wp
+          DO  i = nxl, nxr
+             IF ( i >= 318 .AND. i <= 322 )  THEN
+                DO  j = nys, nyn
+                   IF ( j >= 204 .AND. j <= 208 )  THEN
+                      rmask(j,i,region) = 1.0_wp
+                   ENDIF
+                ENDDO
+             ENDIF
+          ENDDO
+
+!-- Reference
+
+          region = 3
+
+          rmask(:,:,region) = 0.0_wp
+          DO  i = nxl, nxr
+             IF ( i >= 434 .AND. i <= 438 )  THEN
+                DO  j = nys, nyn
+                   IF ( j >= 258 .AND. j <= 262 )  THEN
+                      rmask(j,i,region) = 1.0_wp
+                   ENDIF
+                ENDDO
+             ENDIF
+          ENDDO
+       ENDIF
+    ENDIF
+
 
  END SUBROUTINE user_init_arrays
 
