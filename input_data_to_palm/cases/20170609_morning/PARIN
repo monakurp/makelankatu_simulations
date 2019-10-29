@@ -1,0 +1,255 @@
+!-------------------------------------------------------------------------------
+!-- NESTING PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/nestpar
+!-------------------------------------------------------------------------------
+ &nesting_parameters
+
+    domain_layouts            = 'root',    1,  -1,  36,    0.0,    0.0,
+                                'parent',  2,   1,  36, 3204.0, 2304.0,
+                                'child',   3,   2,  36, 4068.0, 3168.0,
+    nesting_datatransfer_mode = 'cascade',
+    nesting_mode              = 'one-way',
+
+ / ! end of nestpar namelist
+
+!-------------------------------------------------------------------------------
+!-- INITIALIZATION PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/inipar
+!-------------------------------------------------------------------------------
+ &initialization_parameters
+
+!
+!-- Grid
+!------------------------------------------------------------------------------
+    nx                   = 767,
+    ny                   = 767,
+    nz                   =  80,
+
+    dx                   = 9.0,
+    dy                   = 9.0,
+    dz                   = 6.0,  ! was 9.0
+
+    dz_stretch_level     = 300.0,
+    dz_stretch_factor    =  1.03, ! was 1.04
+    dz_max               =  18.0,
+ 
+!
+!-- Numerics
+!------------------------------------------------------------------------------
+    psolver              = 'multigrid',
+!    momentum_advec       = 'ws-scheme',  ! default advection scheme
+!    scalar_advec         = 'ws-scheme', ! 'pw-scheme'
+!    conserve_volume_flow = .T.,
+
+!
+!-- Mode
+!------------------------------------------------------------------------------     
+    humidity             = .T.,
+    q_surface            = 0.007, !0.001
+
+!
+!-- Initialization
+!------------------------------------------------------------------------------
+    initializing_actions = 'inifor',   !'set_constant_profiles', or 'inifor', 
+                                       ! or both (met. from inifor, chem constant profiles)
+
+
+    origin_date_time     = '2017-06-09 07:00:00 +03',
+
+!
+!-- Wall/soil spinup
+!------------------------------------------------------------------------------    
+    spinup_time         = 10.0, !3600
+    spinup_pt_mean      = 284.55,
+    spinup_pt_amplitude = 8.0,             ! give a dirunal cycle from 9.6 - 15.4 °C
+    dt_spinup           = 5.0, !120
+    data_output_during_spinup = .F.,
+
+
+
+!
+!-- Topography
+!------------------------------------------------------------------------------    
+    topography           = 'read_from_file',
+
+!
+!-- Physics
+!------------------------------------------------------------------------------
+    longitude            = 24.94,
+    latitude             = 60.19,
+
+ / ! end of inipar namelist
+
+
+!-------------------------------------------------------------------------------
+!-- RUNTIME PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/d3par
+!-------------------------------------------------------------------------------
+ &runtime_parameters
+
+!
+!-- Run steering
+!------------------------------------------------------------------------------
+    end_time              = 10.0,
+    create_disturbances   = .T.,
+
+!
+!-- Run-control/timeseries output settings
+!------------------------------------------------------------------------------
+    dt_run_control        =   1.0,
+    dt_dots               =  5.0,
+
+!
+!-- Profile output settings
+!------------------------------------------------------------------------------
+    skip_time_dopr        =  0.0,
+    dt_dopr               = 10.0,
+    averaging_interval_pr = 10.0, !900.0,
+    dt_averaging_input_pr =  2.0, !900.0,
+
+    data_output_pr        = 'u',  'u*2',  'wu',  'w*u*',  'w"u"',
+                            'v',  'v*2',  'wv',  'w*v*',  'w"v"',
+                            'w',  'w*2',
+                            'theta', 'theta*2', 'wtheta', 'w*theta*', 'w"theta"',
+                            'q',  'q*2',
+                            'e', 'e*', 
+!
+!-- 2D/3D output settings
+!------------------------------------------------------------------------------
+    do3d_at_begin      = .F., 
+    do2d_at_begin      = .F.,
+
+    dt_data_output     = 10.0, !300,
+    dt_data_output_av  = 10.0, !900.0, 
+    averaging_interval = 10.0, !900.0,
+    dt_averaging_input =  2.0,
+
+
+    section_xy         = 3, 7, 10, 13, 17, 25, 33, 42, 
+    section_yz	       = 384, 
+    section_xz         = 384,
+
+    data_output = 'u_xy_av', 'u_xz_av', 'u_yz_av',
+                  'v_xy_av', 'v_xz_av', 'v_yz_av',
+                  'w_xy_av', 'w_xz_av', 'w_yz_av',
+                  'theta_xy_av', 'theta_xz_av', 'theta_yz_av',
+                  'q_xy_av', 'q_xz_av', 'q_yz_av',
+                  'e_xy_av', 'e_xz_av', 'e_yz_av',
+                  'p_xy_av', 'p_xz_av', 'p_yz_av',
+
+                  'm_soil_av',
+                  't_soil_av',
+
+                  'shf*_xy_av',
+                  'ghf*_xy_av',
+                  'rad_net*_xy_av', 'rad_lw_in*_xy_av', 'rad_lw_out*_xy_av', 'rad_sw_in*_xy_av', 'rad_sw_out*_xy_av',
+                  'qsws*_xy_av',
+                  'tsurf*_xy_av',
+
+                  
+ / ! end of d3par namelist
+
+
+
+!-------------------------------------------------------------------------------
+!-- RADIATION MODEL PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/radpar
+!-------------------------------------------------------------------------------
+  &radiation_parameters
+
+     radiation_scheme =  'rrtmg',    !'clear-sky' or 'rrtmg',
+     constant_albedo = .F.,
+
+     dt_radiation = 5.0,
+
+     surface_reflections = .T.,
+     nrefsteps = 3,
+
+     rad_angular_discretization = .T.,
+     raytrace_mpi_rma = .T.,
+
+  /
+
+
+!-------------------------------------------------------------------------------
+!-- LAND SURFACE MODEL PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/lsmpar
+!------------------------------------------------------------------------------- 
+ &land_surface_parameters 
+
+    constant_roughness     = .T.,
+    aero_resist_kray       = .T.,
+
+    surface_type	   = 'netcdf',
+    conserve_water_content = .T.,
+
+    root_fraction          = 0.49, 0.26, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0,
+    soil_temperature       = 282.16, 282.09, 281.95, 281.82, 281.28, 280.51, 278.94, 275.37,
+    soil_moisture          = 0.322, 0.323, 0.324, 0.326, 0.331, 0.339, 0.357, 0.403,
+    deep_soil_temperature  = 275.0,
+    
+
+
+ / ! end of lsm_par namelist
+
+
+!-------------------------------------------------------------------------------
+!-- URBAN SURFACE MODEL PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/usmpar
+!-------------------------------------------------------------------------------
+ &urban_surface_parameters
+
+    usm_material_model     = .T.,
+    usm_wall_mod = .T.,
+
+ / ! end of urban_surface_par namelist
+
+!------------------------------------------------------------------------------
+!-- PLANT CANOPY MODEL PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/canpar
+!------------------------------------------------------------------------------
+ &plant_canopy_parameters
+
+    canopy_mode = 'read_from_file_3d',
+    canopy_drag_coeff = 0.3,
+
+ / ! end of plant_canopy_parameters namelist
+
+!------------------------------------------------------------------------------  
+!-- SYNTHETIC TURBULENCE GENERATOR PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/stg_par
+!------------------------------------------------------------------------------ 
+ &stg_par
+
+    use_syn_turb_gen = .T., 
+    dt_stg_adjust    = 5.0, 
+    dt_stg_call      = 5.0,
+
+ / ! end of stg_par namelist
+
+
+!------------------------------------------------------------------------------  
+!-- OFFLINE NESTING PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/nestofflpar
+!------------------------------------------------------------------------------      
+ &nesting_offl_parameters
+
+    nesting_offline = .T., 
+
+ /
+
+!-------------------------------------------------------------------------------
+!-- INDOOR PARAMETER NAMELIST
+!   Documentation: http://palm.muk.uni-hannover.de/trac/wiki/doc/app/indoorpar
+!-------------------------------------------------------------------------------
+
+ &indoor_parameters
+
+
+ dt_indoor = 3600.0,
+
+ initial_indoor_temperature = 295.15,
+
+
+ /
+
