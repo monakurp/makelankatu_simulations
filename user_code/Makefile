@@ -1227,6 +1227,7 @@ user_lpm_init.o: \
 user_module.o: \
 	mod_kinds.o \
 	modules.o \
+	pmc_interface_.o \
 	salsa_mod.o \
 	surface_mod.o
 user_spectra.o: \
