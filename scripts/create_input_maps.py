@@ -17,6 +17,10 @@ month = 6
 day = 9
 tod  = 'morning'
 
+# Aerosol size distribution:
+nbins = 10  # number of size bins applied in SALSA
+nbin = [2, 8]  # number of bins per subrange
+reglim = [2.5e-9, 10.0e-9, 2.5e-6]  # subrange diameter limits
 
 file_emissions = 'source_data/EEA_calculated_EF.csv'
 file_psd_shape = 'source_data/hietikko2018_fig7.csv'
@@ -59,7 +63,7 @@ file_child_st                  = 'input_data_to_palm/street_types_child.npz'
 
 if ( date=='20170609' and tod=='morning' ):
   start_hour = 7
-  start_min  = 16
+  start_min  = 0
   end_hour   = 9
   end_min    = 15
   plusUTC    = 3
@@ -224,9 +228,6 @@ ncat = np.arange( 1, 1.1, 1 )
 emission_index = np.linspace( 1, nspecies, nspecies )
 composition_index = np.linspace( 1, ncc, ncc )
 
-nbins = 10
-nbin = [2, 8]
-reglim = [2.5e-9, 10.0e-9, 2.5e-6]
 dmid, bin_limits = define_bins( nbin, reglim )
 
 # Traffic rates
