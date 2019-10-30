@@ -41,7 +41,7 @@ def define_bins( nbin, reglim ):
     c = b-nbin[0]
     vlolim[b] = np.pi / 6.0 * ( reglim[1] * ratio_d ** ( float(c) / nbin[1] ) )**3
     vhilim[b] = np.pi / 6.0 * ( reglim[1] * ratio_d ** ( float(c+1) / nbin[1] ) ) ** 3
-    dmid[b] = np.sqrt( ( 6.0 * vhilim[b] / np.pi ) *0.33333333 * ( 6.0 * vlolim[b] / np.pi )**0.33333333 )
+    dmid[b] = np.sqrt( ( 6.0 * vhilim[b] / np.pi )**0.33333333 * ( 6.0 * vlolim[b] / np.pi )**0.33333333 )
 
   bin_limits = ( 6.0 * vlolim / np.pi )**0.33333333
   bin_limits = np.append( bin_limits, reglim[-1] )
@@ -81,9 +81,7 @@ def psd_from_data( input_file, EF, bin_limits, input_type, plot ):
   # col 0: D (nm)
   # col 1: dN/dlogD (1/cm3)
                         
-  dmid = np.sqrt( bin_limits[0:-1] * bin_limits[1::] ) 
-  dmean = 0.5 * ( bin_limits[0:-1] + bin_limits[1::] )     
-  
+  dmid = np.sqrt( bin_limits[0:-1] * bin_limits[1::] )    
   
   # Calculate size distributions:
   

@@ -301,7 +301,7 @@ aerosol_emission_values[aerosol_emission_values==0] = -9999.0
   
 #%% Save into a file: aerosol and gas emissions
 
-pids_static = nc.Dataset( 'input_data_to_palm/PIDS_STATIC_N03', 'r')
+pids_static = nc.Dataset( 'input_data_to_palm/Container/PIDS_STATIC_N03', 'r')
 pids_salsa  = nc.Dataset( 'input_data_to_palm/cases/{}_{}/PIDS_SALSA_N03'.format( date, tod ), 'w', format='NETCDF4' )
 pids_chem   = nc.Dataset( 'input_data_to_palm/cases/{}_{}/PIDS_CHEM_N03'.format( date, tod ), 'w', format='NETCDF4' )
 
@@ -345,6 +345,7 @@ for dsout in [pids_salsa, pids_chem]:
 pids_chem.createDimension( 'z', 1 )
 zi = pids_chem.createVariable( 'z', 'f4', ('z',),)
 zi[:] = 0.0
+zi.units = 'm'
                                
 # number of emission species:   
 pids_chem.createDimension( 'nspecies', len( emission_index ) )
@@ -364,7 +365,7 @@ en.long_name = 'emission species name'
 en.standard_name = 'emission_name'
 
 # gas emissions
-ev = pids_chem.createVariable( 'emission_values', 'f4', ('time','y','x','nspecies',), fill_value=-9999.0 )
+ev = pids_chem.createVariable( 'emission_values', 'f4', ('time','z','y','x','nspecies',), fill_value=-9999.0 )
 evmod = np.copy( emission_values[:,:,::-1,:,:] )
 ev[:] = evmod
 ev.units = 'g/m2/s'                      
