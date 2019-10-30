@@ -467,13 +467,13 @@
     USE pmc_interface,                                                                             &
         ONLY:  cpl_id,
 
-    IF ( salsa  .AND.  salsa_dynamic_background_concentrations )  THEN
-       CALL salsa_nesting_offl_init
-    ENDIF
-
     INTEGER(iwp) :: i       !< loop index
     INTEGER(iwp) :: j       !< loop index
     INTEGER(iwp) :: region  !< index for loop over statistic regions
+
+    IF ( salsa  .AND.  salsa_dynamic_background_concentrations )  THEN
+       CALL salsa_nesting_offl_init
+    ENDIF
 
 !
 !-- Allocate user-defined arrays and set flags for statistic regions.

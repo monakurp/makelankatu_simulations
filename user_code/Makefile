@@ -19,16 +19,23 @@
 #
 # Current revisions:
 # ------------------
-# - Implement offline nesting for salsa and add dependency of nesting_offl_mod
-#   on salsa_mod
 # - Add dependency on user_module for salsa_mod. Done to enable a specific
 #   set-up in which self-nesting is applied for the flow but the offline nesting
 #   for salsa
-# - Add dependency on basic_constants_and_equations_mod for salsa_mod
+# - Add dependency on user_module for pmc_interface_mod. Done to separate
+#   statistical regions in child and parent.
 # 
 # Former revisions:
 # -----------------
-# $Id: Makefile 4245 2019-09-30 08:40:37Z pavelkrc $
+# $Id: Makefile 4270 2019-10-23 10:46:20Z monakurppa $
+# - Implement offline nesting for salsa and add dependency of nesting_offl_mod
+#   on salsa_mod
+# - Add dependency on basic_constants_and_equations_mod for salsa_mod
+# 
+# 4258 2019-10-07 13:29:08Z suehring
+# Add dependency of land-surface model on pmc_handle_communicator and cpu_log
+# 
+# 4245 2019-09-30 08:40:37Z pavelkrc
 # Remove no longer needed dependencies on surface_mod
 # 
 # 4227 2019-09-10 18:04:34Z gronemeier
@@ -693,9 +700,11 @@ land_surface_model_mod.o: \
 	basic_constants_and_equations_mod.o \
 	bulk_cloud_model_mod.o \
 	calc_mean_profile.o \
+	cpulog_mod.o \
 	mod_kinds.o \
 	modules.o \
 	netcdf_data_input_mod.o \
+	pmc_handle_communicator_mod.o \
 	pmc_interface_mod.o \
 	radiation_model_mod.o \
 	surface_mod.o
@@ -1227,10 +1236,9 @@ user_lpm_init.o: \
 user_module.o: \
 	mod_kinds.o \
 	modules.o \
-	pmc_interface_.o \
+	pmc_interface_mod.o \
 	salsa_mod.o \
-	surface_mod.o \
-        pmc_interface_mod.o
+	surface_mod.o 
 user_spectra.o: \
 	mod_kinds.o \
 	modules.o \
