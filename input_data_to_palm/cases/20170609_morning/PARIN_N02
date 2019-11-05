@@ -19,9 +19,10 @@
 !-- Numerics
 !------------------------------------------------------------------------------
     psolver              = 'multigrid',
-!    momentum_advec       = 'ws-scheme',  ! default advection scheme
-!    scalar_advec         = 'ws-scheme', ! 'pw-scheme'
-!    conserve_volume_flow = .T.,
+    mg_cycles            = 2,
+    momentum_advec       = 'ws-scheme', 
+    scalar_advec         = 'ws-scheme', 
+    conserve_volume_flow = .F.,
 
 !
 !-- Mode
@@ -203,14 +204,18 @@
 
  / ! end of urban_surface_par namelist
 
+
 !------------------------------------------------------------------------------
 !-- PLANT CANOPY MODEL PARAMETER NAMELIST
 !   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/canpar
 !------------------------------------------------------------------------------
  &plant_canopy_parameters
+
     canopy_mode = 'read_from_file_3d',
     canopy_drag_coeff = 0.3,
+
  / ! end of plant_canopy_parameters namelist
+
 
 !-------------------------------------------------------------------------------
 !-- SURFACE OUTPUT PARAMETER NAMELIST
@@ -247,11 +252,8 @@
 
  &indoor_parameters
 
-
- dt_indoor = 3600.0,
-
- initial_indoor_temperature = 295.15,
-
+    dt_indoor = 3600.0,
+    initial_indoor_temperature = 295.15,
 
  /
 

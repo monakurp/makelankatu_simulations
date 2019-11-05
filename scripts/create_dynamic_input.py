@@ -9,6 +9,7 @@ from netcdfTools import createNetcdfVariable
 
 os.chdir(os.path.expanduser("~"))
 os.chdir(('makelankatu_simulations'))
+np.set_printoptions( precision=10 )
 
 parameter = True
 variable  = False
@@ -114,7 +115,7 @@ fname_subset      = 'source_data/cases/{}_{}/meps_subset_2_5km_{}T00Z.nc'.format
                                        datestr, sim_time, datestr )
 fname_soil        = 'source_data/ERA5_reanalysis_soil_cropped.nc'
 fname_adchem      = 'source_data/ADCHEM_data/09062017.mat'
-fname_soiltype    = 'input_data_to_palm/soil_root.npz'
+fname_soiltype    = 'input_data_to_palm/PIDS_STATIC'
 
 fname_out     = 'input_data_to_palm/cases/{}_{}/PIDS_DYNAMIC_{}'.format( \
                                           datestr, sim_time, grid_type )
@@ -413,7 +414,7 @@ timev.long_name = "time"
 
 #%% Create horizontal homogeneous fields of soil temperature and moisture
 
-soil_type = np.load( fname_soiltype )['R']
+soil_type = nc.Dataset(fname_soiltype )['soil_type'][:][:,::-1]
 
 id_soil_type = np.arange( 1, 6+1, 1 )
 max_soil_water_content = np.array([ 0.402, 0.438, 0.429, 0.519, 0.613, 0.765 ])
@@ -429,8 +430,11 @@ for i in range( len( zsoil ) ):
 for i in range( nx+1 ):
   for j in range( ny+1 ):
     for isl in range( len( id_soil_type ) ):
-      if soil_type[j,i]== id_soil_type[isl]:
+      if soil_type.data[j,i]== id_soil_type[isl]:
         init_soil_m[init_soil_m[:,j,i]>max_soil_water_content[isl],j,i] = max_soil_water_content[isl]  
+
+init_soil_m[:,soil_type.data==soil_type.fill_value] = -9999.0
+init_soil_t[:,soil_type.data==soil_type.fill_value] = -9999.0    
 
 #%% Interpolate variable fields to PALM grid
 
@@ -641,7 +645,7 @@ del arrays
 # init_soil_t
 ncvar = dsout.createVariable( 'init_soil_t', 'f4', ( 'zsoil', 'y', 'x' ), 
                               fill_value=-9999.0 )
-ncvar[:] = init_soil_t[:,::-1,:]
+ncvar[:] = init_soil_t[:,:,:]
 ncvar.units = "K"
 ncvar.source = "MEPS analysis for 20170609"
 ncvar.long_name = "initial soil temperature"
@@ -651,7 +655,7 @@ ncvar.lod = 2
 # init_soil_m
 ncvar = dsout.createVariable( 'init_soil_m', 'f4', ( 'zsoil', 'y', 'x' ), 
                               fill_value=-9999.0 )
-ncvar[:] = init_soil_m[:,::-1,:]
+ncvar[:] = init_soil_m[:,:,:]
 ncvar.units = "m^3/m^3"
 ncvar.source = "MEPS analysis for 20170609"
 ncvar.long_name = "initial soil moisture"
@@ -660,6 +664,8 @@ ncvar.lod = 2
 
 
 #%% Air pollutants for the child domain
+
+avg_bg = True
 
 # Provide this information:
 maxspec = 7
@@ -777,6 +783,10 @@ ls_dims = [ y_N03, y_N03, x_N03, x_N03]
 
 # aerosol chemical composition:  
 lsf_adchem_mf_a = adchem['mass_fracs'][ss:ee+1,:,:]
+if avg_bg:
+  avgi = np.nanmean( lsf_adchem_mf_a, axis=0 )
+  for t in range( np.shape( lsf_adchem_mf_a )[0] ):
+    lsf_adchem_mf_a[t,:,:] = avgi
 lsf_mf_a = np.zeros( [ ee-ss+1, len( z_N03 ), ncc ], dtype=float  )
 for t in range( ee-ss+1 ):
   for c in range( ncc ):
@@ -785,6 +795,10 @@ lsf_mf_b = 0.0 * lsf_mf_a
 
 # aerosol size distribution:
 lsf_adchem_psd = adchem['psd'][ss:ee+1,:,:]
+if avg_bg:
+  avgi = np.nanmean( lsf_adchem_psd, axis=0 )
+  for t in range( np.shape( lsf_adchem_psd )[0] ):
+    lsf_adchem_psd[t,:,:] = avgi
 lsf_psd = np.zeros( [ ee-ss+1, len( z_N03 ), nbins ], dtype=float  )
 for t in range( ee-ss+1 ):
   for b in range( nbins ):
@@ -877,200 +891,200 @@ lsf_psdv.lod = 1
 # -----------------------------------------------------------------------------------------------# 
 # Initial profiles:  
 
-# H2SO4:
-init_achem_h2so4 = adchem['H2SO4'][ss,:] * 1e6 # from 1/cm3 to 1/m3
-init_h2so4 = np.zeros( len(z_N03), dtype=float )  
-init_h2so4 = integrate_profile( prof_z, init_achem_h2so4, z_N03, init_h2so4 ) 
-
-# HNO3:
-init_achem_hno3 = adchem['HNO3'][ss,:] * 1e6 # from 1/cm3 to 1/m3
-init_hno3 = np.zeros( len(z_N03), dtype=float )  
-init_hno3 = integrate_profile( prof_z, init_achem_hno3, z_N03, init_hno3 ) 
-
-# NH3:
-init_achem_nh3 = adchem['NH3'][ss,:] * 1e6 # from 1/cm3 to 1/m3
-init_nh3 = np.zeros( len(z_N03), dtype=float )  
-init_nh3 = integrate_profile( prof_z, init_achem_nh3, z_N03, init_nh3 )
-
-# OCSV:
-init_achem_ocsv = adchem['OCSV'][ss,:] * 1e6 # from 1/cm3 to 1/m3
-init_ocsv = np.zeros( len(z_N03), dtype=float )  
-init_ocsv = integrate_profile( prof_z, init_achem_ocsv, z_N03, init_ocsv )
-
-# OCNV:
-init_achem_ocnv = adchem['OCNV'][ss,:] * 1e6 # from 1/cm3 to 1/m3
-init_ocnv = np.zeros( len(z_N03), dtype=float )  
-init_ocnv = integrate_profile( prof_z, init_achem_ocnv, z_N03, init_ocnv )
-
-# -----------------------------------------------------------------------------------------------# 
-# Forcing:
-
-# H2SO4:
-lsf_adchem_h2so4 = adchem['H2SO4'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
-lsf_h2so4 = np.zeros( [ ee-ss+1, len(z_N03) ], dtype=float  )
-for t in range( ee-ss+1 ):
-  lsf_h2so4[t,:]  = integrate_profile( prof_z, lsf_adchem_h2so4[t,:], z_N03, lsf_h2so4[t,:] )
-
-# HNO3:
-lsf_adchem_hno3 = adchem['HNO3'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
-lsf_hno3 = np.zeros( [ ee-ss+1, len(z_N03) ], dtype=float  )
-for t in range( ee-ss+1 ):
-  lsf_hno3[t,:]  = integrate_profile( prof_z, lsf_adchem_hno3[t,:], z_N03, lsf_hno3[t,:] )
-
-# NH3:
-lsf_adchem_nh3 = adchem['NH3'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
-lsf_nh3 = np.zeros( [ ee-ss+1, len(z_N03) ], dtype=float  )
-for t in range( ee-ss+1 ):
-  lsf_nh3[t,:]  = integrate_profile( prof_z, lsf_adchem_nh3[t,:], z_N03, lsf_nh3[t,:] )
-
-# OCSV:
-lsf_adchem_ocsv = adchem['OCSV'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
-lsf_ocsv = np.zeros( [ ee-ss+1, len(z_N03) ], dtype=float  )
-for t in range( ee-ss+1 ):
-  lsf_ocsv[t,:]  = integrate_profile( prof_z, lsf_adchem_ocsv[t,:], z_N03, lsf_ocsv[t,:] )
-
-# OCNV:
-lsf_adchem_ocnv = adchem['OCNV'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
-lsf_ocnv = np.zeros( [ ee-ss+1, len(z_N03) ], dtype=float  )
-for t in range( ee-ss+1 ):
-  lsf_ocnv[t,:]  = integrate_profile( prof_z, lsf_adchem_ocnv[t,:], z_N03, lsf_ocnv[t,:] )
+## H2SO4:
+#init_achem_h2so4 = adchem['H2SO4'][ss,:] * 1e6 # from 1/cm3 to 1/m3
+#init_h2so4 = np.zeros( len(z_N03), dtype=float )  
+#init_h2so4 = integrate_profile( prof_z, init_achem_h2so4, z_N03, init_h2so4 ) 
+#
+## HNO3:
+#init_achem_hno3 = adchem['HNO3'][ss,:] * 1e6 # from 1/cm3 to 1/m3
+#init_hno3 = np.zeros( len(z_N03), dtype=float )  
+#init_hno3 = integrate_profile( prof_z, init_achem_hno3, z_N03, init_hno3 ) 
+#
+## NH3:
+#init_achem_nh3 = adchem['NH3'][ss,:] * 1e6 # from 1/cm3 to 1/m3
+#init_nh3 = np.zeros( len(z_N03), dtype=float )  
+#init_nh3 = integrate_profile( prof_z, init_achem_nh3, z_N03, init_nh3 )
+#
+## OCSV:
+#init_achem_ocsv = adchem['OCSV'][ss,:] * 1e6 # from 1/cm3 to 1/m3
+#init_ocsv = np.zeros( len(z_N03), dtype=float )  
+#init_ocsv = integrate_profile( prof_z, init_achem_ocsv, z_N03, init_ocsv )
+#
+## OCNV:
+#init_achem_ocnv = adchem['OCNV'][ss,:] * 1e6 # from 1/cm3 to 1/m3
+#init_ocnv = np.zeros( len(z_N03), dtype=float )  
+#init_ocnv = integrate_profile( prof_z, init_achem_ocnv, z_N03, init_ocnv )
+#
+## -----------------------------------------------------------------------------------------------# 
+## Forcing:
+#
+## H2SO4:
+#lsf_adchem_h2so4 = adchem['H2SO4'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
+#lsf_h2so4 = np.zeros( [ ee-ss+1, len(z_N03) ], dtype=float  )
+#for t in range( ee-ss+1 ):
+#  lsf_h2so4[t,:]  = integrate_profile( prof_z, lsf_adchem_h2so4[t,:], z_N03, lsf_h2so4[t,:] )
+#
+## HNO3:
+#lsf_adchem_hno3 = adchem['HNO3'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
+#lsf_hno3 = np.zeros( [ ee-ss+1, len(z_N03) ], dtype=float  )
+#for t in range( ee-ss+1 ):
+#  lsf_hno3[t,:]  = integrate_profile( prof_z, lsf_adchem_hno3[t,:], z_N03, lsf_hno3[t,:] )
+#
+## NH3:
+#lsf_adchem_nh3 = adchem['NH3'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
+#lsf_nh3 = np.zeros( [ ee-ss+1, len(z_N03) ], dtype=float  )
+#for t in range( ee-ss+1 ):
+#  lsf_nh3[t,:]  = integrate_profile( prof_z, lsf_adchem_nh3[t,:], z_N03, lsf_nh3[t,:] )
+#
+## OCSV:
+#lsf_adchem_ocsv = adchem['OCSV'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
+#lsf_ocsv = np.zeros( [ ee-ss+1, len(z_N03) ], dtype=float  )
+#for t in range( ee-ss+1 ):
+#  lsf_ocsv[t,:]  = integrate_profile( prof_z, lsf_adchem_ocsv[t,:], z_N03, lsf_ocsv[t,:] )
+#
+## OCNV:
+#lsf_adchem_ocnv = adchem['OCNV'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
+#lsf_ocnv = np.zeros( [ ee-ss+1, len(z_N03) ], dtype=float  )
+#for t in range( ee-ss+1 ):
+#  lsf_ocnv[t,:]  = integrate_profile( prof_z, lsf_adchem_ocnv[t,:], z_N03, lsf_ocnv[t,:] )
 
 # -----------------------------------------------------------------------------------------------# 
 # SAVE VARIABLES TO PIDS_DYNAMIC:  
 
-# H2SO4: 
-h2so4_adchem = createNetcdfVariable( dsout_N03, init_h2so4, 'init_atmosphere_H2SO4', len(z_N03), 
-                                     '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
-h2so4_adchem.long_name = "initial vertical profile of H2SO4" 
-
-nvi = 0
-for nv in ls_names:
-  dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
-  for i in range( len( ls_dims[nvi] ) ):
-    dummy[:,:,i] = lsf_h2so4
-  namev = 'ls_forcing_{}_H2SO4'.format( nv )
-  lsf_h2so4v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', 
-                                     ('time','z',ls_dimsname[nvi],), 
-                                     variable, fill_value=-9999.0  )   
-  lsf_h2so4v.long_name = "background concentration of H2SO4"   
-  nvi += 1
-  
-dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )  
-for j in range( len( y_N03 ) ):
-  for i in range( len( x_N03 ) ):
-    dummy[:,j,i] = lsf_h2so4[:,-1]
-namev = 'ls_forcing_top_H2SO4'
-lsf_h2so4v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',), 
-                                   variable, fill_value=-9999.0  )   
-lsf_h2so4v.long_name = "background concentration of H2SO4"
-
-
-# HNO3:
-hno3_adchem = createNetcdfVariable( dsout_N03, init_hno3, 'init_atmosphere_HNO3', len(z_N03), 
-                                    '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
-hno3_adchem.long_name = "initial vertical profile of HNO3"    
-
-nvi = 0
-for nv in ls_names:
-  dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
-  for i in range( len( ls_dims[nvi] ) ):
-    dummy[:,:,i] = lsf_hno3
-  namev = 'ls_forcing_{}_HNO3'.format( nv )
-  lsf_hno3v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', 
-                                   ('time','z',ls_dimsname[nvi],), 
-                                    variable, fill_value=-9999.0  )   
-  lsf_hno3v.long_name = "background concentration of HNO3" 
-  nvi += 1
-  
-dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )  
-for j in range( len( y_N03 ) ):
-  for i in range( len( x_N03 ) ):
-    dummy[:,j,i] = lsf_hno3[:,-1]  
-namev = 'ls_forcing_top_HNO3'
-lsf_hno3v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',),
-                                  variable, fill_value=-9999.0  )   
-lsf_hno3v.long_name = "background concentration of HNO3"
-
-
-# NH3:
-nh3_adchem = createNetcdfVariable( dsout_N03, init_nh3, 'init_atmosphere_NH3', len(z_N03), 
-                                   '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
-nh3_adchem.long_name = "initial vertical profile of NH3"
-
-nvi = 0
-for nv in ls_names:
-  dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
-  for i in range( len( ls_dims[nvi] ) ):
-    dummy[:,:,i] = lsf_nh3
-  namev = 'ls_forcing_{}_NH3'.format( nv )
-  lsf_nh3v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', 
-                                  ('time','z',ls_dimsname[nvi],), 
-                                   variable, fill_value=-9999.0  )   
-  lsf_nh3v.long_name = "background concentration of NH3"
-  nvi += 1
-  
-dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )  
-for j in range( len( y_N03 ) ):
-  for i in range( len( x_N03 ) ):
-    dummy[:,j,i] = lsf_nh3[:,-1]
-namev = 'ls_forcing_top_NH3'
-lsf_nh3v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',), 
-                                 variable, fill_value=-9999.0  )   
-lsf_nh3v.long_name = "background concentration of NH3"
-
-
-# OCSV:
-ocsv_adchem = createNetcdfVariable( dsout_N03, init_ocsv, 'init_atmosphere_OCSV', len(z_N03), 
-                                    '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
-ocsv_adchem.long_name = "initial vertical profile of OCSV"
-
-nvi = 0
-for nv in ls_names:
-  dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
-  for i in range( len( ls_dims[nvi] ) ):
-    dummy[:,:,i] = lsf_ocsv
-  namev = 'ls_forcing_{}_OCSV'.format( nv )
-  lsf_ocsvv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4',
-                                   ('time','z',ls_dimsname[nvi],), 
-                                    variable, fill_value=-9999.0  )   
-  lsf_ocsvv.long_name = "background concentration of OCSV"   
-  nvi += 1
-  
-dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )  
-for j in range( len( y_N03 ) ):
-  for i in range( len( x_N03 ) ):
-    dummy[:,j,i] = lsf_ocsv[:,-1]
-namev = 'ls_forcing_top_OCSV'
-lsf_ocsvv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',), 
-                                  variable, fill_value=-9999.0  )   
-lsf_ocsvv.long_name = "background concentration of OCSV"
-
-
-# OCNV:
-ocnv_adchem = createNetcdfVariable( dsout_N03, init_ocnv, 'init_atmosphere_OCNV', len(z_N03), 
-                                    '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
-ocnv_adchem.long_name = "initial vertical profile of OCNV"  
-
-nvi = 0
-for nv in ls_names:
-  dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
-  for i in range( len( ls_dims[nvi] ) ):
-    dummy[:,:,i] = lsf_ocnv
-  namev = 'ls_forcing_{}_OCNV'.format( nv )
-  lsf_ocnvv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', 
-                                   ('time','z',ls_dimsname[nvi],),
-                                    variable, fill_value=-9999.0  )   
-  lsf_ocnvv.long_name = "background concentration of OCNV"  
-  nvi += 1
-  
-dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )  
-for j in range( len( y_N03 ) ):
-  for i in range( len( x_N03 ) ):
-    dummy[:,j,i] = lsf_ocnv[:,-1]
-namev = 'ls_forcing_top_OCNV'
-lsf_ocnvv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',), 
-                                  variable, fill_value=-9999.0  )   
-lsf_ocnvv.long_name = "background concentration of OCNV"
+## H2SO4: 
+#h2so4_adchem = createNetcdfVariable( dsout_N03, init_h2so4, 'init_atmosphere_H2SO4', len(z_N03), 
+#                                     '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
+#h2so4_adchem.long_name = "initial vertical profile of H2SO4" 
+#
+#nvi = 0
+#for nv in ls_names:
+#  dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
+#  for i in range( len( ls_dims[nvi] ) ):
+#    dummy[:,:,i] = lsf_h2so4
+#  namev = 'ls_forcing_{}_H2SO4'.format( nv )
+#  lsf_h2so4v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', 
+#                                     ('time','z',ls_dimsname[nvi],), 
+#                                     variable, fill_value=-9999.0  )   
+#  lsf_h2so4v.long_name = "background concentration of H2SO4"   
+#  nvi += 1
+#  
+#dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )  
+#for j in range( len( y_N03 ) ):
+#  for i in range( len( x_N03 ) ):
+#    dummy[:,j,i] = lsf_h2so4[:,-1]
+#namev = 'ls_forcing_top_H2SO4'
+#lsf_h2so4v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',), 
+#                                   variable, fill_value=-9999.0  )   
+#lsf_h2so4v.long_name = "background concentration of H2SO4"
+#
+#
+## HNO3:
+#hno3_adchem = createNetcdfVariable( dsout_N03, init_hno3, 'init_atmosphere_HNO3', len(z_N03), 
+#                                    '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
+#hno3_adchem.long_name = "initial vertical profile of HNO3"    
+#
+#nvi = 0
+#for nv in ls_names:
+#  dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
+#  for i in range( len( ls_dims[nvi] ) ):
+#    dummy[:,:,i] = lsf_hno3
+#  namev = 'ls_forcing_{}_HNO3'.format( nv )
+#  lsf_hno3v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', 
+#                                   ('time','z',ls_dimsname[nvi],), 
+#                                    variable, fill_value=-9999.0  )   
+#  lsf_hno3v.long_name = "background concentration of HNO3" 
+#  nvi += 1
+#  
+#dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )  
+#for j in range( len( y_N03 ) ):
+#  for i in range( len( x_N03 ) ):
+#    dummy[:,j,i] = lsf_hno3[:,-1]  
+#namev = 'ls_forcing_top_HNO3'
+#lsf_hno3v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',),
+#                                  variable, fill_value=-9999.0  )   
+#lsf_hno3v.long_name = "background concentration of HNO3"
+#
+#
+## NH3:
+#nh3_adchem = createNetcdfVariable( dsout_N03, init_nh3, 'init_atmosphere_NH3', len(z_N03), 
+#                                   '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
+#nh3_adchem.long_name = "initial vertical profile of NH3"
+#
+#nvi = 0
+#for nv in ls_names:
+#  dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
+#  for i in range( len( ls_dims[nvi] ) ):
+#    dummy[:,:,i] = lsf_nh3
+#  namev = 'ls_forcing_{}_NH3'.format( nv )
+#  lsf_nh3v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', 
+#                                  ('time','z',ls_dimsname[nvi],), 
+#                                   variable, fill_value=-9999.0  )   
+#  lsf_nh3v.long_name = "background concentration of NH3"
+#  nvi += 1
+#  
+#dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )  
+#for j in range( len( y_N03 ) ):
+#  for i in range( len( x_N03 ) ):
+#    dummy[:,j,i] = lsf_nh3[:,-1]
+#namev = 'ls_forcing_top_NH3'
+#lsf_nh3v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',), 
+#                                 variable, fill_value=-9999.0  )   
+#lsf_nh3v.long_name = "background concentration of NH3"
+#
+#
+## OCSV:
+#ocsv_adchem = createNetcdfVariable( dsout_N03, init_ocsv, 'init_atmosphere_OCSV', len(z_N03), 
+#                                    '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
+#ocsv_adchem.long_name = "initial vertical profile of OCSV"
+#
+#nvi = 0
+#for nv in ls_names:
+#  dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
+#  for i in range( len( ls_dims[nvi] ) ):
+#    dummy[:,:,i] = lsf_ocsv
+#  namev = 'ls_forcing_{}_OCSV'.format( nv )
+#  lsf_ocsvv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4',
+#                                   ('time','z',ls_dimsname[nvi],), 
+#                                    variable, fill_value=-9999.0  )   
+#  lsf_ocsvv.long_name = "background concentration of OCSV"   
+#  nvi += 1
+#  
+#dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )  
+#for j in range( len( y_N03 ) ):
+#  for i in range( len( x_N03 ) ):
+#    dummy[:,j,i] = lsf_ocsv[:,-1]
+#namev = 'ls_forcing_top_OCSV'
+#lsf_ocsvv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',), 
+#                                  variable, fill_value=-9999.0  )   
+#lsf_ocsvv.long_name = "background concentration of OCSV"
+#
+#
+## OCNV:
+#ocnv_adchem = createNetcdfVariable( dsout_N03, init_ocnv, 'init_atmosphere_OCNV', len(z_N03), 
+#                                    '#/m3', 'f4', ('z',), variable, fill_value=-9999.0  )   
+#ocnv_adchem.long_name = "initial vertical profile of OCNV"  
+#
+#nvi = 0
+#for nv in ls_names:
+#  dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi])] )
+#  for i in range( len( ls_dims[nvi] ) ):
+#    dummy[:,:,i] = lsf_ocnv
+#  namev = 'ls_forcing_{}_OCNV'.format( nv )
+#  lsf_ocnvv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', 
+#                                   ('time','z',ls_dimsname[nvi],),
+#                                    variable, fill_value=-9999.0  )   
+#  lsf_ocnvv.long_name = "background concentration of OCNV"  
+#  nvi += 1
+#  
+#dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ) ] )  
+#for j in range( len( y_N03 ) ):
+#  for i in range( len( x_N03 ) ):
+#    dummy[:,j,i] = lsf_ocnv[:,-1]
+#namev = 'ls_forcing_top_OCNV'
+#lsf_ocnvv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',), 
+#                                  variable, fill_value=-9999.0  )   
+#lsf_ocnvv.long_name = "background concentration of OCNV"
 
 
 # gases:
@@ -1098,6 +1112,16 @@ lsf_ocnvv.long_name = "background concentration of OCNV"
 # NO --> cnc_NO3_c_m3_0
 # SS --> cnc_sslt_m_05, m_50, m3_0, m9_0
 # DU --> cnc_mineral_m_05, m_50, m1_8, m6_0
+
+# PRINT INITIAL GAS CONCENTRATIONS
+gas_names = ['NO','NO2','O3','OH','RH','RO2','RCHO','HO2','H2SO4','HNO3','NH3','OCNV','OCSV']
+zi = adchem['z']<150
+print('z = ', adchem['z'][zi] )
+for ig in range( len( gas_names ) ):
+  avgi = np.nanmean( adchem[gas_names[ig]][ss:ee+1,zi[0]], axis=0 )
+  print( '{} (ppm)'.format( gas_names[ig]) )  
+  print(np.array2string(avgi, formatter={'float_kind':'{0:1.2e}, '.format}))
+  print('')
 
 
 #%% Close files

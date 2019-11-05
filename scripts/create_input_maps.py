@@ -301,7 +301,7 @@ aerosol_emission_values[aerosol_emission_values==0] = -9999.0
   
 #%% Save into a file: aerosol and gas emissions
 
-pids_static = nc.Dataset( 'input_data_to_palm/Container/PIDS_STATIC_N03', 'r')
+pids_static = nc.Dataset( 'input_data_to_palm/PIDS_STATIC_N03', 'r')
 pids_salsa  = nc.Dataset( 'input_data_to_palm/cases/{}_{}/PIDS_SALSA_N03'.format( date, tod ), 'w', format='NETCDF4' )
 pids_chem   = nc.Dataset( 'input_data_to_palm/cases/{}_{}/PIDS_CHEM_N03'.format( date, tod ), 'w', format='NETCDF4' )
 

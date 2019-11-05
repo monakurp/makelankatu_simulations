@@ -80,7 +80,7 @@
     INTEGER(iwp) ::  user_idummy     !< 
     
     LOGICAL ::  salsa_dynamic_background_concentrations = .FALSE.  !<
-    LOGICAL ::  salsa_dynamic_background_concentrations = .FALSE.  !<
+    LOGICAL ::  salsa_static_background_concentrations  = .FALSE.  !<
     LOGICAL ::  user_module_enabled = .FALSE.   !< 
     
     REAL(wp) ::  user_rdummy   !< 
@@ -465,48 +465,27 @@
         ONLY:  salsa_nesting_offl_init
 
     USE pmc_interface,                                                                             &
-        ONLY:  cpl_id,
+        ONLY:  cpl_id
 
     INTEGER(iwp) :: i       !< loop index
     INTEGER(iwp) :: j       !< loop index
     INTEGER(iwp) :: region  !< index for loop over statistic regions
 
+!
+!-- Initialise arrays for offline nesting if needed
     IF ( salsa  .AND.  salsa_dynamic_background_concentrations )  THEN
        CALL salsa_nesting_offl_init
     ENDIF
+!
+!-- Statistical regions:
+
+    IF ( statistic_regions >= 1)  THEN
+!
+!--    Parent statistical domains
+       IF ( cpl_id == 2 ) THEN
 
 !
-!-- Allocate user-defined arrays and set flags for statistic regions.
-!-- Sample for user-defined output
-!    ALLOCATE( u2(nzb:nzt+1,nysg:nyng,nxlg:nxrg) )
-!    ALLOCATE( ustvst(nzb:nzt+1,nysg:nyng,nxlg:nxrg) )
-
-!
-!-- Example for defining a statistic region:
-!     IF ( statistic_regions >= 1 )  THEN
-!        region = 1
-! 
-!        rmask(:,:,region) = 0.0_wp
-!        DO  i = nxl, nxr
-!           IF ( i >= INT( 0.25 * nx ) .AND. i <= INT( 0.75 * nx ) )  THEN
-!              DO  j = nys, nyn
-!                 IF ( i >= INT( 0.25 * ny ) .AND. i <= INT( 0.75 * ny ) )  THEN
-!                    rmask(j,i,region) = 1.0_wp
-!                 ENDIF
-!              ENDDO
-!           ENDIF
-!        ENDDO
-! 
-!     ENDIF
-
-!-- Parent statistical domains
-
-!-- Next to container
-
-    IF ( statistic_regions >= 1) THEN
-
-       IF ( cpl_id = 2 ) THEN
-
+!--       Next to container
           region = 1
 
           rmask(:,:,region) = 0.0_wp
@@ -519,9 +498,8 @@
                 ENDDO
              ENDIF
           ENDDO
-
-!-- Reference
-
+!
+!--       Reference
           region = 2
 
           rmask(:,:,region) = 0.0_wp
@@ -534,14 +512,13 @@
                 ENDDO
              ENDIF
           ENDDO
-       ENDIF
+       ENDIF  ! cpl_id==2
 
-!-- Child statistical domains
-
-!-- Next to container
-
-       IF ( cpl_id = 3 ) THEN
-
+!
+!--    Child statistical domains
+       IF ( cpl_id == 3 ) THEN
+!
+!--       Next to container
           region = 1
 
           rmask(:,:,region) = 0.0_wp
@@ -554,10 +531,8 @@
                 ENDDO
              ENDIF
           ENDDO
-       ENDIF
-
-!-- Opposite side of road
-
+!
+!--       Opposite side of road
           region = 2
 
           rmask(:,:,region) = 0.0_wp
@@ -570,9 +545,8 @@
                 ENDDO
              ENDIF
           ENDDO
-
-!-- Reference
-
+!
+!--       Reference
           region = 3
 
           rmask(:,:,region) = 0.0_wp
@@ -585,8 +559,8 @@
                 ENDDO
              ENDIF
           ENDDO
-       ENDIF
-    ENDIF
+       ENDIF  ! cpl_id==3
+    ENDIF  ! statistic_regions >= 1
 
 
  END SUBROUTINE user_init_arrays

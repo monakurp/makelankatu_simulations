@@ -27,7 +27,10 @@
 # 
 # Former revisions:
 # -----------------
-# $Id: Makefile 4270 2019-10-23 10:46:20Z monakurppa $
+# $Id: Makefile 4281 2019-10-29 15:15:39Z schwenkel $
+# delete boundary_conds, added missing dependencies
+# 
+# 4270 2019-10-23 10:46:20Z monakurppa
 # - Implement offline nesting for salsa and add dependency of nesting_offl_mod
 #   on salsa_mod
 # - Add dependency on basic_constants_and_equations_mod for salsa_mod
@@ -128,7 +131,6 @@ SOURCES = \
 	average_3d_data.f90 \
 	basic_constants_and_equations_mod.f90 \
 	biometeorology_mod.f90 \
-	boundary_conds.f90 \
 	buoyancy.f90 \
 	calc_mean_profile.f90 \
 	check_for_restart.f90 \
@@ -346,14 +348,6 @@ biometeorology_mod.o: \
 	netcdf_data_input_mod.o \
 	palm_date_time_mod.o \
 	radiation_model_mod.o
-boundary_conds.o: \
-	bulk_cloud_model_mod.o \
-	chemistry_model_mod.o \
-	mod_kinds.o \
-	modules.o \
-	salsa_mod.o \
-	surface_mod.o \
-	turbulence_closure_mod.o
 bulk_cloud_model_mod.o: \
 	basic_constants_and_equations_mod.o \
 	cpulog_mod.o \
@@ -554,6 +548,8 @@ disturb_heatflux.o: \
 	surface_mod.o
 dynamics_mod.o: \
 	mod_kinds.o \
+        surface_mod.o \
+        pmc_interface_mod.o \
 	modules.o
 exchange_horiz.o: \
 	cpulog_mod.o \

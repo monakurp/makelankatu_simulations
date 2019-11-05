@@ -19,11 +19,9 @@
 !-- Numerics
 !------------------------------------------------------------------------------
     psolver              = 'multigrid',
-    mg_cycles            = 2,
-    momentum_advec       = 'ws-scheme', 
-    scalar_advec         = 'ws-scheme', 
-    conserve_volume_flow = .F.,
-    monotonic_limiter_z  = .T.,
+!    momentum_advec       = 'ws-scheme',  ! default advection scheme
+!    scalar_advec         = 'ws-scheme', ! 'pw-scheme'
+!    conserve_volume_flow = .T.,
 
 !
 !-- Mode
@@ -160,11 +158,11 @@
 
 !
 !-- Terrain-following aerosol data
-    data_output_masks(4,:) =  'salsa_N_bin1_av', 'salsa_N_bin2_av', 
-                              'salsa_N_bin3_av', 'salsa_N_bin4_av', 
-                              'salsa_N_bin5_av', 'salsa_N_bin6_av', 
-                              'salsa_N_bin7_av', 'salsa_N_bin8_av', 
-                              'salsa_N_bin9_av', 'salsa_N_bin10_av', 
+    data_output_masks(4,:) =  'salsa_Nbin1_av', 'salsa_Nbin2_av', 
+                              'salsa_Nbin3_av', 'salsa_Nbin4_av', 
+                              'salsa_Nbin5_av', 'salsa_Nbin6_av', 
+                              'salsa_Nbin7_av', 'salsa_Nbin8_av', 
+                              'salsa_Nbin9_av', 'salsa_Nbin10_av', 
                               'salsa_LDSA_av',  'salsa_PM2.5_av', 
                               'salsa_N_UFP_av', 'salsa_Ntot_av',
                               'salsa_s_SO4',    'salsa_s_OC',     
@@ -300,16 +298,13 @@
 
  / ! end of urban_surface_par namelist
 
-
 !------------------------------------------------------------------------------
 !-- PLANT CANOPY MODEL PARAMETER NAMELIST
 !   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/canpar
 !------------------------------------------------------------------------------
  &plant_canopy_parameters
-
     canopy_mode = 'read_from_file_3d',
     canopy_drag_coeff = 0.3,
-
  / ! end of plant_canopy_parameters namelist
 
 
@@ -366,42 +361,39 @@
     photolysis_scheme          = 'simple',
 !
 !-- Chemical species
-!                                     1        2        3        4        5        6        7
-    cs_name                    =    'NO',   'NO2',    'O3',    'OH',    'RH',   'RO2',  'RCHO',
-!                                     8        9       10       11       12       13 
-                                   'HO2', 'H2SO4',  'HNO3',   'NH3',  'OCNV',  'OCSV',
-    cs_surface                 = 1.34e-3, 6.02e-3, 4.27e-3, 2.96e-9, 3.17e-3, 1.23e-7, 8.00e-3,
-                                 1.24e-7, 2.65e-8, 7.38e-5, 4.41e-4, 1.20e-6, 2.86e-5, ! in ppm
+!                                 1    2      3     4     5    6     7      8     9       10     11    12     13    
+    cs_name                    = 'NO','NO2', 'O3', 'OH', 'RH','RO2','RCHO','HO2','H2SO4','HNO3','NH3','OCNV','OCSV',
+    cs_surface                 = 0.02, 0.03, 0.03, 0.02, 0.02, 0.02, 0.02 , 0.02, 0.02  , 0.03 , 0.02, 0.02 , 0.02 , ! in ppm
 
 !-- Initial profiles (also for lateral boundaries if 'set_constant_profiles' is chosen) in ppm
 
-    cs_profile(1,:)            =  1.34e-3,  1.34e-3,  1.12e-3,  1.10e-3,  1.80e-3,  2.61e-4,  ! NO
-    cs_profile(2,:)            =  6.02e-3,  6.02e-3,  4.99e-3,  4.30e-3,  1.05e-2,  8.31e-4,  ! NO2
-    cs_profile(3,:)            =  4.27e-3,  4.27e-3,  4.46e-3,  4.80e-3,  7.25e-3,  2.90e-2,  ! O3
-    cs_profile(4,:)            =  2.96e-9,  2.96e-9,  3.53e-9,  4.81e-9,  4.22e-9,  8.41e-9,  ! OH
-    cs_profile(5,:)            =  3.17e-3,  3.17e-3,  2.31e-3,  1.67e-3,  4.44e-4,  2.97e-4,  ! RH
-    cs_profile(6,:)            =  1.23e-7,  1.23e-7,  2.42e-7,  5.20e-7,  6.42e-8,  2.69e-6,  ! RO2
-    cs_profile(7,:)            =  8.00e-3,  8.00e-3,  7.87e-3,  7.79e-3,  7.93e-3,  8.47e-3,  ! RCHO
-    cs_profile(8,:)            =  1.24e-7,  1.24e-7,  1.76e-7,  2.38e-7,  6.79e-8,  1.85e-6,  ! HO2
-    cs_profile(9,:)            =  2.65e-8,  2.65e-8,  1.85e-8,  1.67e-8,  9.78e-8,  3.69e-9,  ! H2SO4
-    cs_profile(10,:)           =  7.38e-5,  7.38e-5,  7.17e-5,  8.15e-5,  2.50e-4,  3.11e-4,  ! HNO3
-    cs_profile(11,:)           =  4.41e-4,  4.41e-4,  2.37e-4,  1.24e-4,  2.09e-5,  7.61e-5,  ! NH3
-    cs_profile(12,:)           =  1.20e-6,  1.20e-6,  1.37e-6,  1.55e-6,  3.45e-6,  8.12e-6,  ! OCNV
-    cs_profile(13,:)           =  2.86e-5,  2.86e-5,  2.90e-5,  3.02e-5,  5.73e-5,  1.63e-4  ! OCSV
+    cs_profile(1,:)            =  0.020, 0.020, 0.015, 0.015, 0.015, 0.010, 0.010, 0.010, 0.010, 0.010, 0.007, ! NO
+    cs_profile(2,:)            =  0.030, 0.030, 0.020, 0.020, 0.020, 0.015, 0.015, 0.015, 0.015, 0.015, 0.010, ! NO2
+    cs_profile(3,:)            =  0.020, 0.020, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, ! O3
+    cs_profile(4,:)            =  0.020, 0.020, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, ! OH
+    cs_profile(5,:)            =  0.020, 0.020, 0.015, 0.015, 0.015, 0.010, 0.010, 0.010, 0.010, 0.010, 0.007, ! RH
+    cs_profile(6,:)            =  0.030, 0.030, 0.020, 0.020, 0.020, 0.015, 0.015, 0.015, 0.015, 0.015, 0.010, ! RO2
+    cs_profile(7,:)            =  0.020, 0.020, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, ! RCHO
+    cs_profile(8,:)            =  0.020, 0.020, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, ! HO2
+    cs_profile(9,:)            =  0.020, 0.020, 0.015, 0.015, 0.015, 0.010, 0.010, 0.010, 0.010, 0.010, 0.007, ! H2SO4
+    cs_profile(10,:)           =  0.030, 0.030, 0.020, 0.020, 0.020, 0.015, 0.015, 0.015, 0.015, 0.015, 0.010, ! HNO3
+    cs_profile(11,:)           =  0.020, 0.020, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, ! NH3
+    cs_profile(12,:)           =  0.020, 0.020, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, ! OCNV
+    cs_profile(13,:)           =  0.020, 0.020, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, 0.050, ! OCSV
 
-    cs_heights(1,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! NO
-    cs_heights(2,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! NO2
-    cs_heights(3,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! O3
-    cs_heights(4,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! OH
-    cs_heights(5,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! RH
-    cs_heights(6,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! RO2
-    cs_heights(7,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! RCHO
-    cs_heights(8,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! HO2
-    cs_heights(9,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! H2SO4
-    cs_heights(10,:)           =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! HNO3
-    cs_heights(11,:)           =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! NH3
-    cs_heights(12,:)           =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! OCNV
-    cs_heights(13,:)           =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! OCSV
+    cs_heights(1,:)            =  0.0,   5.0,   15.0,   25.0,  35.0,  45.0,  55.0,  65.0,  75.0,  85.0, 95.0, ! NO
+    cs_heights(2,:)            =  0.0,   5.0,   15.0,   25.0,  35.0,  45.0,  55.0,  65.0,  75.0,  85.0, 95.0, ! NO2
+    cs_heights(3,:)            =  0.0,   5.0,   15.0,   25.0,  35.0,  45.0,  55.0,  65.0,  75.0,  85.0, 95.0, ! O3
+    cs_heights(4,:)            =  0.0,   5.0,   15.0,   25.0,  35.0,  45.0,  55.0,  65.0,  75.0,  85.0, 95.0, ! OH
+    cs_heights(5,:)            =  0.0,   5.0,   15.0,   25.0,  35.0,  45.0,  55.0,  65.0,  75.0,  85.0, 95.0, ! RH
+    cs_heights(6,:)            =  0.0,   5.0,   15.0,   25.0,  35.0,  45.0,  55.0,  65.0,  75.0,  85.0, 95.0, ! RO2
+    cs_heights(7,:)            =  0.0,   5.0,   15.0,   25.0,  35.0,  45.0,  55.0,  65.0,  75.0,  85.0, 95.0, ! RCHO
+    cs_heights(8,:)            =  0.0,   5.0,   15.0,   25.0,  35.0,  45.0,  55.0,  65.0,  75.0,  85.0, 95.0, ! HO2
+    cs_heights(9,:)            =  0.0,   5.0,   15.0,   25.0,  35.0,  45.0,  55.0,  65.0,  75.0,  85.0, 95.0, ! H2SO4
+    cs_heights(10,:)           =  0.0,   5.0,   15.0,   25.0,  35.0,  45.0,  55.0,  65.0,  75.0,  85.0, 95.0, ! HNO3
+    cs_heights(11,:)           =  0.0,   5.0,   15.0,   25.0,  35.0,  45.0,  55.0,  65.0,  75.0,  85.0, 95.0, ! NH3
+    cs_heights(12,:)           =  0.0,   5.0,   15.0,   25.0,  35.0,  45.0,  55.0,  65.0,  75.0,  85.0, 95.0, ! OCNV
+    cs_heights(13,:)           =  0.0,   5.0,   15.0,   25.0,  35.0,  45.0,  55.0,  65.0,  75.0,  85.0, 95.0, ! OCSV
 
 !
 !-- Emissions:   
@@ -435,7 +427,7 @@
 !
 !-- Time stepping 
     dt_salsa                   =    2.0, ! time step for calculating aerosol processes (s)
-    skip_time_do_salsa         =  1.0    !300.0, ! starting time of SALSA (s), skip first 5 minutes
+    skip_time_do_salsa         =  300.0, ! starting time of SALSA (s), skip first 5 minutes
 
 !
 !-- List of activated chemical components: 

@@ -6,7 +6,7 @@
 
     domain_layouts            = 'root',    1,  -1,  36,    0.0,    0.0,
                                 'parent',  2,   1,  36, 3204.0, 2304.0,
-                                'child',   3,   2,  36, 4068.0, 3168.0,
+                                'child',   3,   2, 324, 4068.0, 3168.0,
     nesting_datatransfer_mode = 'cascade',
     nesting_mode              = 'one-way',
 
@@ -37,9 +37,10 @@
 !-- Numerics
 !------------------------------------------------------------------------------
     psolver              = 'multigrid',
-!    momentum_advec       = 'ws-scheme',  ! default advection scheme
-!    scalar_advec         = 'ws-scheme', ! 'pw-scheme'
-!    conserve_volume_flow = .T.,
+    mg_cycles            = 2,
+    momentum_advec       = 'ws-scheme', 
+    scalar_advec         = 'ws-scheme', 
+    conserve_volume_flow = .F.,
 
 !
 !-- Mode
@@ -221,9 +222,9 @@
 !------------------------------------------------------------------------------ 
  &stg_par
 
-    use_syn_turb_gen = .T., 
-    dt_stg_adjust    = 5.0, 
-    dt_stg_call      = 5.0,
+    use_syn_turb_gen =   .T., 
+    dt_stg_adjust    =   5.0, 
+    dt_stg_call      = 300.0,
 
  / ! end of stg_par namelist
 
@@ -242,14 +243,10 @@
 !-- INDOOR PARAMETER NAMELIST
 !   Documentation: http://palm.muk.uni-hannover.de/trac/wiki/doc/app/indoorpar
 !-------------------------------------------------------------------------------
-
  &indoor_parameters
-
-
- dt_indoor = 3600.0,
-
- initial_indoor_temperature = 295.15,
-
+ 
+    dt_indoor = 3600.0,
+    initial_indoor_temperature = 295.15,
 
  /
 
