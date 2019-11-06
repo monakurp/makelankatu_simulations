@@ -236,7 +236,7 @@
 			'rad_lw_in_av','rad_lw_dif_av','rad_lw_ref_av','rad_lw_res_av',
 			'rad_sw_in_av','rad_sw_dif_av','rad_sw_ref_av','rad_sw_res_av',
                         'qv1_av', 'usws_av', 'vsws_av', 'qsws_av', 
-                        'waste_heat_av', 'im_hf_av'
+                        'waste_heat_av', 'im_hf_av',
     dt_dosurf	= 5.0,
     dt_dosurf_av = 5.0, !1800.0,
 

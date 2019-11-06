@@ -125,10 +125,10 @@
     dt_domask          = 10.0, ! 600.0  ! mask 1:
                           0.1, ! mask 2: to compare with metek
                           0.1, ! mask 3: to compare with metek 
-                         10.0  ! 600.0, ! mask 4: avg aerosol data
-                         10.0  ! 600.0, ! mask 5: avg gas data
-                         10.0  ! 600.0, ! mask 6: "profile" data (behind the container)
-                         10.0  ! 600.0, ! mask 7: "profile" data (on the other side)
+                         10.0, ! 600.0, ! mask 4: avg aerosol data
+                         10.0, ! 600.0, ! mask 5: avg gas data
+                         10.0, ! 600.0, ! mask 6: "profile" data (behind the container)
+                         10.0, ! 600.0, ! mask 7: "profile" data (on the other side)
 
     section_xy         = 10, 20, 30, 40, 50, 60, 80,
     section_yz	       = 288, 
@@ -333,7 +333,7 @@
 			'rad_lw_in_av','rad_lw_dif_av','rad_lw_ref_av','rad_lw_res_av',
 			'rad_sw_in_av','rad_sw_dif_av','rad_sw_ref_av','rad_sw_res_av',
                         'qv1_av', 'usws_av', 'vsws_av', 'qsws_av', 
-                        'waste_heat_av', 'im_hf_av'
+                        'waste_heat_av', 'im_hf_av',
     dt_dosurf	= 5.0,
     dt_dosurf_av = 5.0, !1800.0,
 
@@ -387,7 +387,7 @@
     cs_profile(10,:)           =  7.38e-5,  7.38e-5,  7.17e-5,  8.15e-5,  2.50e-4,  3.11e-4,  ! HNO3
     cs_profile(11,:)           =  4.41e-4,  4.41e-4,  2.37e-4,  1.24e-4,  2.09e-5,  7.61e-5,  ! NH3
     cs_profile(12,:)           =  1.20e-6,  1.20e-6,  1.37e-6,  1.55e-6,  3.45e-6,  8.12e-6,  ! OCNV
-    cs_profile(13,:)           =  2.86e-5,  2.86e-5,  2.90e-5,  3.02e-5,  5.73e-5,  1.63e-4  ! OCSV
+    cs_profile(13,:)           =  2.86e-5,  2.86e-5,  2.90e-5,  3.02e-5,  5.73e-5,  1.63e-4,  ! OCSV
 
     cs_heights(1,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! NO
     cs_heights(2,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! NO2
@@ -435,7 +435,7 @@
 !
 !-- Time stepping 
     dt_salsa                   =    2.0, ! time step for calculating aerosol processes (s)
-    skip_time_do_salsa         =  1.0    !300.0, ! starting time of SALSA (s), skip first 5 minutes
+    skip_time_do_salsa         =  1.0,   !300.0, ! starting time of SALSA (s), skip first 5 minutes
 
 !
 !-- List of activated chemical components: 
