@@ -9,7 +9,7 @@
 !------------------------------------------------------------------------------
     nx                   = 575,
     ny                   = 575,
-    nz                   =  96,
+    nz                   = 126,
 
     dx                   = 1.0,
     dy                   = 1.0,
@@ -165,11 +165,11 @@
                               'salsa_N_bin5_av', 'salsa_N_bin6_av', 
                               'salsa_N_bin7_av', 'salsa_N_bin8_av', 
                               'salsa_N_bin9_av', 'salsa_N_bin10_av', 
-                              'salsa_LDSA_av',  'salsa_PM2.5_av', 
-                              'salsa_N_UFP_av', 'salsa_Ntot_av',
-                              'salsa_s_SO4',    'salsa_s_OC',     
-                              'salsa_s_BC','    'salsa_s_NO',      
-                              'salsa_s_NH', 
+                              'salsa_LDSA_av',   'salsa_PM2.5_av', 
+                              'salsa_N_UFP_av',  'salsa_Ntot_av',
+                              'salsa_s_SO4_av',  'salsa_s_OC_av',     
+                              'salsa_s_BC_av',   'salsa_s_NO_av',      
+                              'salsa_s_NH_av', 
 
     mask_x_loop(4,:)   = 60.0, 520.0, 1.,
     mask_y_loop(4,:)   = 60.0, 520.0, 1.,
@@ -193,29 +193,29 @@
 !-- "Profiles" behind the container
     data_output_masks(6,:) =  'salsa_LDSA_av',  'salsa_Ntot_av', 
                               'salsa_N_UFP_av', 'salsa_PM2.5_av',
-                              'salsa_s_SO4',    'salsa_s_OC',     
-                              'salsa_s_BC','    'salsa_s_NO',      
-                              'salsa_s_NH',     
+                              'salsa_s_SO4_av', 'salsa_s_OC_av',     
+                              'salsa_s_BC_av',  'salsa_s_NO_av',      
+                              'salsa_s_NH_av',     
                               'kc_NO_av',       'kc_NO2_av',
                               'kc_O3_av',
 
     mask_x_loop(6,:)   = 303.0, 307.0, 1.0,
     mask_y_loop(6,:)   = 178.0, 182.0, 1.0, 
-    mask_z_loop(6,:)   =  22.0,  96.0, 1.0,
+    mask_z_loop(6,:)   =  22.0, 126.0, 1.0,
 
 !
 !-- "Profiles" on the other side of the street
     data_output_masks(7,:) =  'salsa_LDSA_av',  'salsa_Ntot_av', 
                               'salsa_N_UFP_av', 'salsa_PM2.5_av',
-                              'salsa_s_SO4',    'salsa_s_OC',     
-                              'salsa_s_BC','    'salsa_s_NO',      
-                              'salsa_s_NH',     
+                              'salsa_s_SO4_av', 'salsa_s_OC_av',     
+                              'salsa_s_BC_av',  'salsa_s_NO_av',      
+                              'salsa_s_NH_av',     
                               'kc_NO_av',       'kc_NO2_av',
                               'kc_O3_av',
 
     mask_x_loop(7,:)   = 318.0, 322.0, 1.0,
     mask_y_loop(7,:)   = 204.0, 208.0, 1.0, 
-    mask_z_loop(7,:)   =  22.0,  96.0, 1.0,
+    mask_z_loop(7,:)   =  22.0, 126.0, 1.0,
 
 !
 !-- 3D data

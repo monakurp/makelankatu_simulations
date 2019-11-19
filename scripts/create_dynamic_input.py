@@ -70,7 +70,7 @@ if grid_type == 'real':
   
   nx_N03 = 576-1
   ny_N03 = 576-1
-  nz_N03 = 96
+  nz_N03 = 126 # was 96
 
   dx_N03 = 1.0
   dy_N03 = 1.0
