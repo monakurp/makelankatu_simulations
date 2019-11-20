@@ -490,9 +490,9 @@
 
           rmask(:,:,region) = 0.0_wp
           DO  i = nxl, nxr
-             IF ( i >= 388 .AND. i <= 390 )  THEN
+             IF ( i >= 392 .AND. i <= 393 )  THEN
                 DO  j = nys, nyn
-                   IF ( j >= 348 .AND. j <= 350 )  THEN
+                   IF ( j >= 344 .AND. j <= 345 )  THEN
                       rmask(j,i,region) = 1.0_wp
                    ENDIF
                 ENDDO
@@ -523,9 +523,9 @@
 
           rmask(:,:,region) = 0.0_wp
           DO  i = nxl, nxr
-             IF ( i >= 303 .AND. i <= 307 )  THEN
+             IF ( i >= 312 .AND. i <= 316 )  THEN
                 DO  j = nys, nyn
-                   IF ( j >= 178 .AND. j <= 182 )  THEN
+                   IF ( j >= 169 .AND. j <= 172 )  THEN
                       rmask(j,i,region) = 1.0_wp
                    ENDIF
                 ENDDO
@@ -537,9 +537,9 @@
 
           rmask(:,:,region) = 0.0_wp
           DO  i = nxl, nxr
-             IF ( i >= 318 .AND. i <= 322 )  THEN
+             IF ( i >= 332 .AND. i <= 336 )  THEN
                 DO  j = nys, nyn
-                   IF ( j >= 204 .AND. j <= 208 )  THEN
+                   IF ( j >= 196 .AND. j <= 200 )  THEN
                       rmask(j,i,region) = 1.0_wp
                    ENDIF
                 ENDDO
