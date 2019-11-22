@@ -523,9 +523,9 @@
 
           rmask(:,:,region) = 0.0_wp
           DO  i = nxl, nxr
-             IF ( i >= 312 .AND. i <= 316 )  THEN
+             IF ( i >= 313 .AND. i <= 317 )  THEN
                 DO  j = nys, nyn
-                   IF ( j >= 169 .AND. j <= 172 )  THEN
+                   IF ( j >= 168 .AND. j <= 172 )  THEN
                       rmask(j,i,region) = 1.0_wp
                    ENDIF
                 ENDDO
