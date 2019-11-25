@@ -136,12 +136,13 @@ R2[idx] = 1
 
 # Give an individual id for each building
 Rmod = np.copy( R7 )
-Rmod[Rmod==-127] = 0 # snm.label functions with 0s and 1s
+Rmod[Rmod>0] = 1
+Rmod[Rmod<=0] = 0 # snm.label functions with 0s and 1s
 labeled_array, num_features = snm.label( Rmod )
 if np.sum( labeled_array < 0 ) > 0:
   print('Negative building_id! Exiting.')
   sys.exit(1)
-labeled_array[labeled_array==0.0] = -127
+labeled_array[labeled_array==0] = -127
 R7 = labeled_array.astype(int)
 del Rmod, labeled_array, num_features
 
@@ -277,5 +278,9 @@ Rdict1["R"]=R6
 Rdict1["Labels"] = soil_labels
 saveTileAsNumpyZ( soil, Rdict1 )
 
+Rdict1["R"]=R7
+Rdict1["Labels"] = ['']
+saveTileAsNumpyZ( building_id, Rdict1 )
 
-print(" ...{}, {}, {}, {}, {} saved successfully.".format(vegetation,pavement,water,buildingmask,soil))
+
+print(" ...{}, {}, {}, {}, {}, {} saved successfully.".format(vegetation,pavement,water,buildingmask,soil, building_id))
