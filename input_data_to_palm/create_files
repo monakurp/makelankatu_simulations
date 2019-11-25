@@ -41,7 +41,7 @@ replaceRasterValues.py -f topo_root.npz -fo building_id_root.npz -gt 0 -v 1 -p1 
 replaceRasterValues.py -f building_id_root.npz -fo building_root.npz -gt 0 -v 5 -p1 0 0 -p2 768 768 
 
 #replace with fill value (-9999) where there are no buildings
-replaceRasterValues.py -f topo_root.npz -fo topo_root.npz -lt 0.000001 -v -9999.9 -p1 0 0 -p2 768 768 
+replaceRasterValues.py -f topo_root.npz -fo topo_root.npz -lt 0.000000001 -v -9999.9 -p1 0 0 -p2 768 768 
 
 #same for building id, but with different fill value
 replaceRasterValues.py -f building_id_root.npz -fo building_id_root.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
@@ -51,15 +51,11 @@ replaceRasterValues.py -f building_root.npz -fo building_root.npz -lt 1 -v -127 
 
 
 # fill missing surface types according to PIDS
-fixSurfaceTypes.py -f0 vegetation_root.npz -f1 pavement_root.npz -f2 water_root.npz -f3 building_root.npz -f4 building_type_root.npz -f5 soil_root.npz
+fixSurfaceTypes.py -f0 vegetation_root.npz -f1 pavement_root.npz -f2 water_root.npz -f3 building_root.npz -f4 building_type_root.npz -f5 soil_root.npz -f6 building_id_root.npz
 
 # create surface fractions
 rastersToSurfaceFraction.py -f0 vegetation_root.npz -f1 pavement_root.npz -f2 water_root.npz -fo surface_fraction_root
 
-# Save in a NetCDF file
-#rasterToNetCdf.py -f topo_root.npz -fo topo_root.nc -flat
-#rasterToNetCdf.py -f oro_root.npz -fo oro_root.nc -flat
-#rasterToNetCdf.py -f vege_root.npz -fo vege_root.nc -flat
 
 
 # ------------------------------------------------------------------------------------------------#
@@ -96,21 +92,17 @@ rasterTileSubtraction.py -f topo_parent.npz -fs oro_parent.npz -fm building_id_p
 # same as with root
 replaceRasterValues.py -f topo_parent.npz -fo building_id_parent.npz -gt 0 -v 1 -p1 0 0 -p2 768 768
 replaceRasterValues.py -f building_id_parent.npz -fo building_parent.npz -gt 0 -v 5 -p1 0 0 -p2 768 768 
-replaceRasterValues.py -f topo_parent.npz -fo topo_parent.npz -lt 0.000001 -v -9999.9 -p1 0 0 -p2 768 768 
+replaceRasterValues.py -f topo_parent.npz -fo topo_parent.npz -lt 0.000000001 -v -9999.9 -p1 0 0 -p2 768 768 
 replaceRasterValues.py -f building_id_parent.npz -fo building_id_parent.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
 replaceRasterValues.py -f building_parent.npz -fo building_parent.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
 
 
 # fill missing surface types according to PIDS
-fixSurfaceTypes.py -f0 vegetation_parent.npz -f1 pavement_parent.npz -f2 water_parent.npz -f3 building_parent.npz -f4 building_type_parent.npz -f5 soil_parent.npz
+fixSurfaceTypes.py -f0 vegetation_parent.npz -f1 pavement_parent.npz -f2 water_parent.npz -f3 building_parent.npz -f4 building_type_parent.npz -f5 soil_parent.npz -f6 building_id_parent.npz
 
 # create surface fractions
 rastersToSurfaceFraction.py -f0 vegetation_parent.npz -f1 pavement_parent.npz -f2 water_parent.npz -fo surface_fraction_parent
 
-# Save in a NetCDF file
-#rasterToNetCdf.py -f topo_parent.npz -fo topo_parent.nc -flat
-#rasterToNetCdf.py -f oro_parent.npz -fo oro_parent.nc -flat
-#rasterToNetCdf.py -f vege_parent.npz -fo vege_parent.nc -flat
 
 # ------------------------------------------------------------------------------------------------#
 # Child topography, orography, vegetation and land use:
@@ -147,21 +139,17 @@ rasterTileSubtraction.py -f topo_child.npz -fs oro_child.npz -fm building_id_chi
 # same as with root/parent
 replaceRasterValues.py -f topo_child.npz -fo building_id_child.npz -gt 0 -v 1 -p1 0 0 -p2 768 768
 replaceRasterValues.py -f building_id_child.npz -fo building_child.npz -gt 0 -v 5 -p1 0 0 -p2 768 768 
-replaceRasterValues.py -f topo_child.npz -fo topo_child.npz -lt 0.000001 -v -9999.9 -p1 0 0 -p2 768 768 
+replaceRasterValues.py -f topo_child.npz -fo topo_child.npz -lt 0.000000001 -v -9999.9 -p1 0 0 -p2 768 768 
 replaceRasterValues.py -f building_id_child.npz -fo building_id_child.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
 replaceRasterValues.py -f building_child.npz -fo building_child.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
 
 
 # fill missing surface types according to PIDS
-fixSurfaceTypes.py -f0 vegetation_child.npz -f1 pavement_child.npz -f2 water_child.npz -f3 building_child.npz -f4 building_type_child.npz -f5 soil_child.npz
+fixSurfaceTypes.py -f0 vegetation_child.npz -f1 pavement_child.npz -f2 water_child.npz -f3 building_child.npz -f4 building_type_child.npz -f5 soil_child.npz -f6 building_id_child.npz
 
 # create surface fractions
 rastersToSurfaceFraction.py -f0 vegetation_child.npz -f1 pavement_child.npz -f2 water_child.npz -fo surface_fraction_child
 
-# Save in a NetCDF file
-#rasterToNetCdf.py -f topo_child.npz -fo topo_child.nc -flat
-#rasterToNetCdf.py -f oro_child.npz -fo oro_child.nc -flat
-#rasterToNetCdf.py -f vege_child.npz -fo vege_child.nc -flat
 
 # ------------------------------------------------------------------------------------------------#
 # Child traffic maps:
@@ -171,10 +159,6 @@ rastersToSurfaceFraction.py -f0 vegetation_child.npz -f1 pavement_child.npz -f2 
 
 # With street types:
 #extractDomainFromTile.py -f ~/Katumetro/road_maps/merged.npz -fo street_types_child -gc -iP 6676070 25497317 -dx 1 1 -r 0.5 0.5 -wd 270 -N 576 576
-
-# Save in NetCDF files
-#rasterToNetCdf.py -f lanes_child.npz -fo lanes_child.nc -flat
-#rasterToNetCdf.py -f street_types_child.npz -fo street_types_child.nc -flat
 
 
 # ------------------------------------------------------------------------------------------------#
