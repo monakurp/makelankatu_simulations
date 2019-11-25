@@ -43,7 +43,7 @@ replaceRasterValues.py -f building_id_root.npz -fo building_root.npz -gt 0 -v 5 
 #replace with fill value (-9999) where there are no buildings
 replaceRasterValues.py -f topo_root.npz -fo topo_root.npz -lt 0.000001 -v -9999.9 -p1 0 0 -p2 768 768 
 
-#same for building id, except use different fill value (-127)
+#same for building id, but with different fill value
 replaceRasterValues.py -f building_id_root.npz -fo building_id_root.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
 
 
