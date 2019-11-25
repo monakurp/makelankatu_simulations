@@ -5,7 +5,7 @@ import numpy as np
 from utilities import writeLog
 from mapTools import *
 from netcdfTools import *
-
+import scipy.ndimage.measurements as snm
 
 
 '''
@@ -19,7 +19,8 @@ Author: Jani Stromberg
 '''
 
 #==========================================================#
-parser = argparse.ArgumentParser(prog='fixSurfaceTypes.py', description='''Fills missing types for PALM from input raster data.''')
+parser = argparse.ArgumentParser( prog='fixSurfaceTypes.py', 
+                                  description='''Fills missing types for PALM from input raster data.''')
 parser.add_argument("-f0","--vegetation", type=str, \
   help="Name of vegetation type input raster data file.")
 parser.add_argument("-f1","--pavement", type=str, \
@@ -32,6 +33,8 @@ parser.add_argument("-f4","--building", type=str, \
   help="Name of building type input raster data file.")
 parser.add_argument("-f5","--soil", type=str, \
   help="Name of soil type input raster data file.")
+parser.add_argument("-f6","--building_id", type=str, \
+  help="Name of building id input raster data file.")
 args = parser.parse_args()
 writeLog(parser, args)
 
@@ -43,6 +46,7 @@ water = args.water
 buildingmask = args.buildingmask
 building = args.building
 soil = args.soil
+building_id = args.building_id
 
 # Read in the data. The output raster will inherit Rdict1 properties not shown here.
 Rdict1 = readNumpyZTile(vegetation)
@@ -89,15 +93,24 @@ R6Orig = Rdict6['GlobOrig']
 dPx6 = Rdict6['dPx']
 Rdict6 = None
 
+Rdict7 = readNumpyZTile(building_id)
+R7 = Rdict7['R']
+R7dims = np.array(np.shape(R7))
+R7Orig = Rdict7['GlobOrig']
+dPx7 = Rdict7['dPx']
+Rdict7 = None
 
 
-if( (R1Orig == R2Orig).all() and (R2Orig == R3Orig).all() and (R3Orig == R4Orig).all() and (R4Orig == R5Orig).all() and (R5Orig == R6Orig).all()):
+
+if( (R1Orig == R2Orig).all() and (R2Orig == R3Orig).all() and (R3Orig == R4Orig).all() and 
+    (R4Orig == R5Orig).all() and (R5Orig == R6Orig).all() and (R6Orig == R7Orig).all()):
   print(' Excellent! The origos match.')
 else:
   print(' The tiles do not have identical origos. Exiting.')
   sys.exit(1)
 
-if( (R1dims == R2dims).all() and (R2dims == R3dims).all() and (R3dims == R4dims).all() and (R4dims == R5dims).all() and (R5dims == R6dims).all()):
+if( (R1dims == R2dims).all() and (R2dims == R3dims).all() and (R3dims == R4dims).all() and 
+    (R4dims == R5dims).all() and (R5dims == R6dims).all() and (R6dims == R7dims).all()):
   print(' Excellent! The dimensions match.')
 else:
   print(' The tiles do not have identical dimensions. Exiting.')
@@ -121,6 +134,16 @@ R5[idx] = -127
 idx = (R1 < 1) & (R2 < 1) & (R3 < 1) & (R4 < 1)
 R2[idx] = 1
 
+# Give an individual id for each building
+Rmod = np.copy( R7 )
+Rmod[Rmod==-127] = 0 # snm.label functions with 0s and 1s
+labeled_array, num_features = snm.label( Rmod )
+if np.sum( labeled_array < 0 ) > 0:
+  print('Negative building_id! Exiting.')
+  sys.exit(1)
+labeled_array[labeled_array==0.0] = -127
+R7 = labeled_array.astype(int)
+del Rmod, labeled_array, num_features
 
 # PIDS classification-----------------------------
 # User can make their own changes to these conditions as they see fit.
@@ -134,6 +157,7 @@ for i in range(nPx[0]):
         watertype = R3[i,j]
         buildtype = R5[i,j]
         soiltype = R6[i,j]
+        buildid = R7[i,j]
 
         if (pavetype == 1):
             R2[i,j] = 2
@@ -185,6 +209,7 @@ for i in range(nPx[0]):
             R6[i,j] = 2
         if (pavetype > 0 and watertype > 0 and vegetype > 0):
             R3[i,j] = -127
+        
             
         
 #------------------------------------------------
