@@ -130,8 +130,8 @@
     do2d_at_begin      = .T.,
 
     dt_data_output     =    1.0, 
-    dt_data_output_av  =  600.0,
-    averaging_interval =  600.0,
+    dt_data_output_av  =  300.0,
+    averaging_interval =  300.0,
     dt_averaging_input =    1.0, 
 
     section_xy         = 10, 20, 30, 40, 50, 60, 80,
@@ -162,7 +162,7 @@
                            1.0, ! mask 8: temporal surface data
                            1.0, ! mask 9: temporal profile data
 
-    skip_time_domask   = 300.0, 900.0, 900.0, 300.0, 300.0, 300.0, 6300.0, 6300.0,
+    skip_time_domask   = 300.0, 900.0, 900.0, 300.0, 300.0, 300.0, 300.0, 6300.0, 6300.0,
 
 !
 !-- Excluding the border areas
@@ -287,13 +287,13 @@
 
 !
 !-- Temporal terrain-following data
-    data_output_masks(8,:) =  'salsa_LDSA_av',   
-                              'salsa_PM2.5_av', 
-                              'salsa_N_UFP_av',  
-                              'salsa_Ntot_av', 
-                              'kc_NO_av',
-                              'kc_NO2_av',
-                              'kc_O3_av',
+    data_output_masks(8,:) =  'salsa_LDSA',   
+                              'salsa_PM2.5', 
+                              'salsa_N_UFP',  
+                              'salsa_Ntot', 
+                              'kc_NO',
+                              'kc_NO2',
+                              'kc_O3',
 
     mask_x_loop(8,:)   = 60.0, 520.0, 1.0,
     mask_y_loop(8,:)   = 60.0, 520.0, 1.0,
@@ -301,13 +301,13 @@
 
 !
 !-- Temporal "profiles" in front of the container
-    data_output_masks(9,:) =  'salsa_LDSA_av',   
-                              'salsa_PM2.5_av', 
-                              'salsa_N_UFP_av',  
-                              'salsa_Ntot_av', 
-                              'kc_NO_av',
-                              'kc_NO2_av',
-                              'kc_O3_av',
+    data_output_masks(9,:) =  'salsa_LDSA',   
+                              'salsa_PM2.5', 
+                              'salsa_N_UFP',  
+                              'salsa_Ntot', 
+                              'kc_NO',
+                              'kc_NO2',
+                              'kc_O3',
 
     mask_x_loop(9,:)   = 313.0, 317.0, 1.0,
     mask_y_loop(9,:)   = 168.0, 172.0, 1.0,
