@@ -566,8 +566,7 @@
 !-------------------------------------------------------------------------------
 
  &indoor_parameters
- 
-    dt_indoor = 3600.0,
+
     initial_indoor_temperature = 295.15,
 
  / ! end of indoor_parameters namelist
