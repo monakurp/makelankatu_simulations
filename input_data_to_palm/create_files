@@ -16,6 +16,7 @@ extractDomainFromTile.py -f $HOME/Maps/npz_files/Building_type.npz -fo building_
 
 # Create LAD file
 rasterToCanopy3D.py -f vege_root.npz -fo lad_root.npz -m const -l 6 -zr 4 20
+rasterToCanopy3D.py -f vege_root.npz -fo lad_winter_root.npz -m const -l 1.2 -zr 4 20
 
 # Create building_id map
 maskFromRasterTile.py -f landuse_root.npz -fo building_id_root.npz -mv 6
@@ -74,6 +75,7 @@ extractDomainFromTile.py -f $HOME/Maps/npz_files/Building_type.npz -fo building_
 
 # Create LAD file
 rasterToCanopy3D.py -f vege_parent.npz -fo lad_parent.npz -m const -l 6 -zr 4 20
+rasterToCanopy3D.py -f vege_parent.npz -fo lad_winter_parent.npz -m const -l 1.2 -zr 4 20
 
 # Create building_id map
 maskFromRasterTile.py -f landuse_parent.npz -fo building_id_parent.npz -mv 6
@@ -121,6 +123,7 @@ extractDomainFromTile.py -f $HOME/Maps/npz_files/Building_type.npz -fo building_
 
 # Create LAD file
 rasterToCanopy3D.py -f vege_child.npz -fo lad_child.npz -m const -l 6 -zr 4 20
+rasterToCanopy3D.py -f vege_child.npz -fo lad_winter_child.npz -m const -l 1.2 -zr 4 20
 
 # Create building_id map
 maskFromRasterTile.py -f landuse_child.npz -fo building_id_child.npz -mv 6
@@ -163,14 +166,14 @@ rastersToSurfaceFraction.py -f0 vegetation_child.npz -f1 pavement_child.npz -f2 
 
 # ------------------------------------------------------------------------------------------------#
 # Create PIDS_STATIC:
-genPIDSInput.py pids_parent.cfg
-mv PIDS_STATIC Makela_static_N02
+#genPIDSInput.py pids_parent.cfg
+#mv PIDS_STATIC Makela_static_N02
 
-genPIDSInput.py pids_child.cfg
-mv PIDS_STATIC Makela_static_N03
+#genPIDSInput.py pids_child.cfg
+#mv PIDS_STATIC Makela_static_N03
 
-genPIDSInput.py pids_root.cfg
-mv PIDS_STATIC Makela_static
+#genPIDSInput.py pids_root.cfg
+#mv PIDS_STATIC Makela_static
 
 
 rm -f .extractDomain*

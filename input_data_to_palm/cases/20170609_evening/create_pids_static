@@ -1,0 +1,11 @@
+# Create PIDS_STATIC:
+rm -f PIDS_STATIC
+
+genPIDSInput.py pids_parent.cfg
+mv PIDS_STATIC PIDS_STATIC_N02
+
+genPIDSInput.py pids_child.cfg
+mv PIDS_STATIC PIDS_STATIC_N03
+
+genPIDSInput.py pids_root.cfg
+

@@ -152,13 +152,13 @@
 !-- Mask output
 !------------------------------------------------------------------------------
 
-    dt_domask          = 600.0, ! mask 1: wind field near the surface
+    dt_domask          = 300.0, ! mask 1: wind field near the surface
                            0.1, ! mask 2: to compare with metek
                            0.1, ! mask 3: to compare with metek 
-                         600.0, ! mask 4: avg aerosol data
-                         600.0, ! mask 5: avg gas data
-                         600.0, ! mask 6: "profile" data (behind the container)
-                         600.0, ! mask 7: "profile" data (on the other side)
+                         300.0, ! mask 4: avg aerosol data
+                         300.0, ! mask 5: avg gas data
+                         300.0, ! mask 6: "profile" data (behind the container)
+                         300.0, ! mask 7: "profile" data (on the other side)
                            1.0, ! mask 8: temporal surface data
                            1.0, ! mask 9: temporal profile data
 
@@ -459,6 +459,7 @@
 !-- Deposition parametrisations:
     depo_pcm_par               = 'zhang2001',  ! plant canopy
     depo_surf_par              = 'zhang2001',  ! ground, roofs and walls
+    season_z01                 = 1,            ! summer
 
 !
 !-- Other switches:

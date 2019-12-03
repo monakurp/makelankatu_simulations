@@ -22,7 +22,7 @@ variable  = False
 sim_year   = 2017
 sim_month  = 6 # 12
 sim_day    = 9 # 7
-sim_time   = 'morning'
+sim_time   = 'evening'
 datestr    = '{}{:02d}{:02d}'.format( sim_year, sim_month, sim_day )
 
 flow_spinup_min = 15
@@ -33,19 +33,26 @@ if ( datestr=='20170609' and sim_time=='morning' ):
   end_hour   = 9
   end_min    = 15
   plusUTC    = 3
+  
+if ( datestr=='20170609' and sim_time=='evening' ):
+  start_hour = 20
+  start_min  = 10
+  end_hour   = 21
+  end_min    = 15
+  plusUTC    = 3
 
 elif ( datestr=='20170614' and sim_time=='morning' ):
-  start_hour = 7
-  start_min  = 9
-  end_hour   = 8
-  end_min    = 58
+  start_hour = 6
+  start_min  = 55
+  end_hour   = 9
+  end_min    = 0
   plusUTC    = 3
   
 elif ( datestr=='20171207' and sim_time=='morning' ):
   start_hour = 7
-  start_min  = 20
+  start_min  = 5
   end_hour   = 9
-  end_min    = 14
+  end_min    = 15
   plusUTC    = 2
 
 

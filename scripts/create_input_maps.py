@@ -58,6 +58,7 @@ date = '{}{:02d}{:02d}'.format(year,month,day)
 file_child_topo                = 'input_data_to_palm/topo_child.npz'
 file_child_lanes_and_buildings = 'input_data_to_palm/lanes_child.npz'
 file_child_st                  = 'input_data_to_palm/street_types_child.npz'
+file_child_oro                 = 'input_data_to_palm/oro_child.npz'
 
 
 #%% Exact hours
@@ -69,18 +70,25 @@ if ( date=='20170609' and tod=='morning' ):
   end_min    = 15
   plusUTC    = 3
 
+if ( date=='20170609' and tod=='evening' ):
+  start_hour = 20
+  start_min  = 10
+  end_hour   = 21
+  end_min    = 15
+  plusUTC    = 3
+
 elif ( date=='20170614' and tod=='morning' ):
-  start_hour = 7
-  start_min  = 9
-  end_hour   = 8
-  end_min    = 58
+  start_hour = 6
+  start_min  = 55
+  end_hour   = 9
+  end_min    = 0
   plusUTC    = 3
   
 elif ( date=='20171207' and tod=='morning' ):
   start_hour = 7
-  start_min  = 20
+  start_min  = 5
   end_hour   = 9
-  end_min    = 14
+  end_min    = 15
   plusUTC    = 2
 
 #%% Read in input files
@@ -89,6 +97,7 @@ elif ( date=='20171207' and tod=='morning' ):
 child_topo                = np.load( file_child_topo )
 child_lanes_and_buildings = np.load( file_child_lanes_and_buildings )
 child_st                  = np.load( file_child_st )
+child_oro                 = np.load( file_child_oro )
 
 # Emission data in g/m/veh: 
 emission = pd.read_csv( file_emissions, header=1 )
@@ -302,7 +311,7 @@ aerosol_emission_values[aerosol_emission_values==0] = -9999.0
   
 #%% Save into a file: aerosol and gas emissions
 
-pids_static = nc.Dataset( 'input_data_to_palm/PIDS_STATIC_N03', 'r')
+pids_static = nc.Dataset( 'input_data_to_palm/cases/{}_{}/PIDS_STATIC_N03'.format( date, tod ), 'r')
 pids_salsa  = nc.Dataset( 'input_data_to_palm/cases/{}_{}/PIDS_SALSA_N03'.format( date, tod ), 'w', format='NETCDF4' )
 pids_chem   = nc.Dataset( 'input_data_to_palm/cases/{}_{}/PIDS_CHEM_N03'.format( date, tod ), 'w', format='NETCDF4' )
 
@@ -437,7 +446,7 @@ pids_static.close()
 
 #%% Save into a file: anthropogenic heat
   
-topo_top = np.ceil( child_topo['R'] ).astype(int)
+topo_top = np.ceil( child_oro['R'] ).astype(int)
   
 # ANTHROPOGENIC_HEAT and ANTHROPOGENIC_HEAT_PROFILE (which is set to 1)
 f1 = open('input_data_to_palm/cases/{}_{}/ANTHROPOGENIC_HEAT'.format( date, tod ), 'w+')
@@ -446,10 +455,37 @@ f2 = open('input_data_to_palm/cases/{}_{}/ANTHROPOGENIC_HEAT_PROFILE'.format( da
 for i in range( len( street_types ) ):
   for j in range( len( street_types ) ):
     if heat_traffic[0,j,i]>0.0:
-      f1.write( '{},{},{},{}\n'.format(i,ny-1-j,topo_top[j,i],heat_traffic[0,j,i]) )
+      f1.write( '{},{},{},{}\n'.format(i,ny-1-j,int(topo_top[j,i]),np.nanmean( heat_traffic[:,j,i] ) ) )
 for t in range(24):
-  f2.write( '{},{}\n'.format(t,1.0))
+  f2.write( '{},{},{}\n'.format(t,int(topo_top[j,i]),1.0))
 f1.close()
 f2.close()
+
+print('naheatlayers: {}'.format( np.max( topo_top[heat_traffic[0,:,:]>0] ) +1 ) )
   
-    
+#%% Create a test set for anthropogenic heat
+
+if month==6 and day==9 and tod == 'morning':
+
+  nx_test = 20
+  ny_test = 20
+  
+  topo_top_test = np.zeros( [ny_test, nx_test] ) + 4.0
+  heat_traffic_test = np.zeros( [ny_test, nx_test] )
+  
+  heat_traffic_test[1:3,:]   = np.nanpercentile( heat_traffic[heat_traffic>0], 10 )
+  heat_traffic_test[5:7,:]   = np.nanpercentile( heat_traffic[heat_traffic>0], 30 )
+  heat_traffic_test[9:11,:]  = np.nanpercentile( heat_traffic[heat_traffic>0], 50 )
+  heat_traffic_test[13:15,:] = np.nanpercentile( heat_traffic[heat_traffic>0], 70 )
+  heat_traffic_test[17:19,:] = np.nanpercentile( heat_traffic[heat_traffic>0], 90 )
+  
+  f1 = open('input_data_to_palm/cases/{}_{}/ANTHROPOGENIC_HEAT_test'.format( date, tod ), 'w+')
+  f2 = open('input_data_to_palm/cases/{}_{}/ANTHROPOGENIC_HEAT_PROFILE_test'.format( date, tod ), 'w+')
+      
+  for i in range( nx_test ):
+    for j in range( ny_test ):
+      f1.write( '{},{},{},{}\n'.format(i,j,int(topo_top_test[j,i]+1),heat_traffic_test[j,i]) )
+  for t in range(24):
+    f2.write( '{},{},{}\n'.format(t,int(topo_top_test[j,i]+1),1.0))
+  f1.close()
+  f2.close()
