@@ -19,11 +19,12 @@ variable  = False
 # -------------------------------------------------------------------------------------------------#
 
 # Simulation time: start of drone measurements - ~15min --> end of drone measurements
-sim_year   = 2017
-sim_month  = 6 # 12
-sim_day    = 9 # 7
-sim_time   = 'evening'
-datestr    = '{}{:02d}{:02d}'.format( sim_year, sim_month, sim_day )
+sim_year    = 2017
+sim_month   = 6 # 12
+sim_day     = 14 # 7
+sim_time    = 'morning'
+datestr     = '{}{:02d}{:02d}'.format( sim_year, sim_month, sim_day )
+adchem_type = 'FRES' # or 'orig'
 
 flow_spinup_min = 15
 
@@ -121,8 +122,8 @@ fname_full_backup = 'source_data/cases/{}_{}/meps_mbr0_full_backup_2_5km_{}T00Z.
 fname_subset      = 'source_data/cases/{}_{}/meps_subset_2_5km_{}T00Z.nc'.format( \
                                        datestr, sim_time, datestr )
 fname_soil        = 'source_data/ERA5_reanalysis_soil_cropped.nc'
-fname_adchem      = 'source_data/ADCHEM_data/09062017.mat'
-fname_soiltype    = 'input_data_to_palm/PIDS_STATIC'
+fname_adchem      = 'source_data/ADCHEM_data/09062017_{}.mat'.format( adchem_type )
+fname_soiltype    = 'input_data_to_palm/cases/{}_{}/PIDS_STATIC'.format( datestr, sim_time)
 
 fname_out     = 'input_data_to_palm/cases/{}_{}/PIDS_DYNAMIC_{}'.format( \
                                           datestr, sim_time, grid_type )
@@ -288,13 +289,13 @@ soil_time = np.array( soil['time'] )
 
 soil_timestr = [dtime.datetime( 1900, 1, 1 ) + dtime.timedelta( hours=float(t1) ) for t1 in soil_time]
 
-zsoil = np.array([0.035, 0.175, 0.64, 1.945]) # https://confluence.ecmwf.int/pages/viewpage.action?pageId=56660259
+zsoil = np.array([0.035, 0.175, 0.64, 1.945]) #https://confluence.ecmwf.int/display/CKB/ERA5-Land+data+documentation
 zsoil_PALM = np.array([0.01, 0.02, 0.04, 0.06, 0.14, 0.26, 0.54, 1.86]) #PALM default soil configuration
 
 
 if grid_type=='real':
-  loni = np.where( ( soil_lon > lons[0] ) & ( soil_lon < lons[-1]+0.25 ) )[0][0]
-  lati = np.where( ( soil_lat > lats[0] ) & ( soil_lat < lats[-1]+0.25 ) )[0][0]
+  loni = np.where( ( soil_lon > lons[0] ) & ( soil_lon < lons[-1]+0.1 ) )[0][0]
+  lati = np.where( ( soil_lat > lats[0] ) & ( soil_lat < lats[-1]+0.1 ) )[0][1]
 else:
   loni = 0
   lati = 0
@@ -309,6 +310,8 @@ for t in range( len( soil_timestr ) ):
   if ( soil_timestr[t].month==sim_month and soil_timestr[t].day==sim_day and
        soil_timestr[t].hour==end_hour-plusUTC ):  
     ti2 = t
+if not 'ti1' in locals():
+  ti1 = ti2-1
 
 for i in range( len( zsoil ) ):
   soil_t[i] = np.nanmean( soil['stl{}'.format(i+1)][ti1:ti2+1,lati,loni] )
@@ -700,7 +703,7 @@ def integrate_profile( old_z, old_prof, new_z, new_prof ):
   return new_prof
 
 # Read in the file
-adchem = adchem = hdf5storage.loadmat( fname_adchem )
+adchem = hdf5storage.loadmat( fname_adchem )
 
 dmid = np.squeeze( adchem['dmid'] )
 prof_z = np.squeeze( adchem['z'] )

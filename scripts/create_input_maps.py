@@ -1,7 +1,6 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 import matplotlib.gridspec as gridspec
 import os
 import pandas as pd
@@ -23,11 +22,9 @@ nbins = 10  # number of size bins applied in SALSA
 nbin = [2, 8]  # number of bins per subrange
 reglim = [2.5e-9, 10.0e-9, 2.5e-6]  # subrange diameter limits
 
-file_emissions = 'source_data/EEA_calculated_EF.csv'
-file_psd_shape = 'source_data/hietikko2018_fig7.csv'
-file_HDD = 'source_data/HDD_Kaisaniemi.csv'
-
 fill_value = np.nan#-9999
+
+hourly = False
 
 # coordinates of the HSY supersite
 #easting_HSY  = 25497337.38
@@ -35,33 +32,9 @@ fill_value = np.nan#-9999
 #y_HSY = origo[0] - northing_HSY
 #x_HSY = easting_HSY - origo[1]
 
-#%% Different street types around Makelankatu:
-
-st_index = np.arange(1,7.1,1)
-st_names = ['asuntokatu','kokoojakatu','paakatu_keskustaan', 'paakatu_keskustasta','kumpulantie',\
-            'makelanrinne_keskustaan','makelanrinne_keskustasta']
-st_traffic_relative = np.array([200., 5400., 28100., 28100., 8700., 43200., 43200.])
-st_traffic_relative = st_traffic_relative / st_traffic_relative[2]
-st_traffic_relative[-2::] = 1.0 + 0.3/0.7
-st_width = np.array([5., 6., 10., 10., 10., 10., 10.])
-
-#%% Colors:
-cmap_init_st = cm.get_cmap('PiYG', 3) 
-cmap_new_st  = cm.get_cmap('rainbow', len(st_names) )
-
-#%% Open files:
-
-os.chdir( ( folder ) )
+#%% Exact hours
 
 date = '{}{:02d}{:02d}'.format(year,month,day)
-
-file_child_topo                = 'input_data_to_palm/topo_child.npz'
-file_child_lanes_and_buildings = 'input_data_to_palm/lanes_child.npz'
-file_child_st                  = 'input_data_to_palm/street_types_child.npz'
-file_child_oro                 = 'input_data_to_palm/oro_child.npz'
-
-
-#%% Exact hours
 
 if ( date=='20170609' and tod=='morning' ):
   start_hour = 7
@@ -90,6 +63,38 @@ elif ( date=='20171207' and tod=='morning' ):
   end_hour   = 9
   end_min    = 15
   plusUTC    = 2
+
+#%% Different street types around Makelankatu:
+
+st_index = np.arange(1,7.1,1)
+st_names = ['asuntokatu','kokoojakatu','paakatu_keskustaan', 'paakatu_keskustasta','kumpulantie',\
+            'makelanrinne_keskustaan','makelanrinne_keskustasta']
+st_traffic_relative = np.array([200., 5400., 28100., 28100., 8700., 43200., 43200.])
+st_traffic_relative = st_traffic_relative / st_traffic_relative[2]
+st_traffic_relative[-2::] = 1.0 + 0.3/0.7
+st_width = np.array([5., 6., 10., 10., 10., 10., 10.])
+
+#%% Colors:
+cmap_init_st = cm.get_cmap('PiYG', 3) 
+cmap_new_st  = cm.get_cmap('rainbow', len(st_names) )
+
+#%% Open files:
+
+os.chdir( ( folder ) )
+
+file_child_topo                = 'input_data_to_palm/topo_child.npz'
+file_child_lanes_and_buildings = 'input_data_to_palm/lanes_child.npz'
+file_child_st                  = 'input_data_to_palm/street_types_child.npz'
+file_child_oro                 = 'input_data_to_palm/oro_child.npz'
+
+if hourly:
+  suffix = ''
+else:
+  suffix = '_15min'
+
+file_emissions = 'source_data/EEA_calculated_EF{}.csv'.format( suffix )
+file_psd_shape = 'source_data/hietikko2018_fig7.csv'
+file_HDD = 'source_data/HDD_Kaisaniemi.csv'
 
 #%% Read in input files
 
@@ -192,18 +197,6 @@ st_map[ ( ( ( mask==2 ) | ( mask==6 ) | (mask==9 ) ) & ( street_type_map==2 ) ) 
 # Plot maps:
 gs   = gridspec.GridSpec( 1, 2, width_ratios=[20,1], left=0.05, right=0.69, wspace=0.02  )
 
-# Plot street type map
-fig1  = plt.figure()
-ax1   = fig1.add_subplot(gs[0])
-im1   = ax1.imshow( child_topo['R'], cmap='Greys', interpolation='None' )
-im12  = ax1.imshow( street_type_map*100.0, cmap=cmap_init_st, interpolation='None' )
-cax1  = fig1.add_subplot(gs[1])
-cbar1 = fig1.colorbar( im12, cax=cax1, ticks = [133,200,267] )
-cbar1.ax.set_yticklabels( ['Asuntokatu','Paakatu','Kokoojakatu'], fontsize=10 )
-for i in range( len(x1) ):
-  ax1.plot( [x1[i],x2[i],x3[i]], [y1[i],y2[i],y3[i]], 'r--', linewidth=1.5 )
-ax1.axis([0,576,576,0])
-
 # Plot relative traffic amount map
 fig2   = plt.figure()
 ax2    = fig2.add_subplot(gs[0])
@@ -256,15 +249,18 @@ tr[:,6] = emission[' traffic from city (veh/h)'] * st_traffic_relative[6]
 
 # EF [g/m/veh] * TR[veh/h] * 1/3600 h/s * 1 / street_width --> g/m2/s
 
-emission_values = np.zeros( [len(emission),1, ny,nx,nspecies] ) + 0.0
-aerosol_emission_values = np.zeros( [len(emission), ny, nx, len( ncat ) ] ) + 0.0
-heat_traffic = np.zeros( [len(emission),ny,nx] ) + 0.0
+emission_values = np.zeros( [len( emission ), 1, ny, nx, nspecies] ) + 0.0
+aerosol_emission_values = np.zeros( [len( emission ), ny, nx, len( ncat ) ] ) + 0.0
+heat_traffic = np.zeros( [len( emission ), ny, nx] ) + 0.0
 
 # Define gas emissions
 si = 0
 for s in emission_name:
   sname = emission_name[si].strip()
-  factor = 1.0 / 3600.0
+  if hourly:
+    factor = 1.0 / 3600.0
+  else:
+    factor = 1.0 / 900.0
   if sname == 'RH':
     sname = 'alkanes'
   elif sname == 'H2SO4':
@@ -282,7 +278,10 @@ for s in emission_name:
   si += 1
 
 # Define aerosol adn heat emissions  
-factor = 1.0 / 3600.0
+if hourly:
+  factor = 1.0 / 3600.0
+else:
+  factor = 1.0 / 900.0
 for t in range( len( emission ) ): # time
   for i in range( len( st_traffic_relative ) ): # street type
     TR = tr[t,i]  # veh/s
@@ -311,16 +310,22 @@ aerosol_emission_values[aerosol_emission_values==0] = -9999.0
   
 #%% Save into a file: aerosol and gas emissions
 
-pids_static = nc.Dataset( 'input_data_to_palm/cases/{}_{}/PIDS_STATIC_N03'.format( date, tod ), 'r')
-pids_salsa  = nc.Dataset( 'input_data_to_palm/cases/{}_{}/PIDS_SALSA_N03'.format( date, tod ), 'w', format='NETCDF4' )
-pids_chem   = nc.Dataset( 'input_data_to_palm/cases/{}_{}/PIDS_CHEM_N03'.format( date, tod ), 'w', format='NETCDF4' )
+pids_folder = 'input_data_to_palm/cases/{}_{}'.format( date, tod )
+
+pids_static = nc.Dataset( '{}/PIDS_STATIC_N03'.format( pids_folder, tod ), 'r')
+pids_salsa  = nc.Dataset( '{}/PIDS_SALSA_N03{}'.format( pids_folder, suffix ), 'w', format='NETCDF4' )
+pids_chem   = nc.Dataset( '{}/PIDS_CHEM_N03{}'.format( pids_folder, suffix ), 'w', format='NETCDF4' )
 
 dims = ['x','y']
 max_string_length = np.linspace( 1, 25, 25 )
 
 seconds_in_hour = 3600.0
 time_start = ( start_hour - plusUTC ) * seconds_in_hour
-time_emission = np.arange( time_start, time_start + ( len( emission ) - 1 )*3600.0+1, 3600.0 )
+if hourly:
+  dt = 3600.0
+else:
+  dt = 900.0
+time_emission = np.arange( time_start, time_start + ( len( emission ) - 1 )*dt+1, dt )
 
 for dsout in [pids_salsa, pids_chem]:
   

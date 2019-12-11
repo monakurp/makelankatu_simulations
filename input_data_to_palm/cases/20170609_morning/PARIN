@@ -37,7 +37,7 @@
 !-- Numerics
 !------------------------------------------------------------------------------
     psolver              = 'multigrid',
-    mg_cycles            = 3,            ! no. of cycles in the multigrid scheme
+    mg_cycles            = 4,            ! no. of cycles in the multigrid scheme
     ngsrb                = 2,            ! no. of Gauss-Seidel iterations
     momentum_advec       = 'ws-scheme', 
     scalar_advec         = 'ws-scheme', 

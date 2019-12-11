@@ -210,6 +210,14 @@ for i in range(nPx[0]):
             R6[i,j] = 2
         if (pavetype > 0 and watertype > 0 and vegetype > 0):
             R3[i,j] = -127
+
+        #Currently, point can only belong to vegetation, pavement or water. Favour pavement.
+        if (pavetype > 0 and watertype > 0):
+            R3[i,j] = -127
+        if (pavetype > 0 and vegetype > 0):
+            R1[i,j] = -127
+        if (vegetype > 0 and watertype > 0):
+            R3[i,j] = -127
         
             
         

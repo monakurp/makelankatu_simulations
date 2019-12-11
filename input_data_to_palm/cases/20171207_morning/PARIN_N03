@@ -141,7 +141,7 @@
                            1.0, ! mask 8: temporal surface data
                            1.0, ! mask 9: temporal profile data
 
-    skip_time_domask   = 300.0, 900.0, 900.0, 300.0, 300.0, 300.0, 300.0, 6300.0, 6300.0,
+    skip_time_domask   = 300.0, 900.0, 900.0, 300.0, 300.0, 300.0, 300.0, 6000.0, 6000.0,
 
 !
 !-- Excluding the border areas

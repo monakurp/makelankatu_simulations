@@ -19,7 +19,7 @@
 !-- Numerics
 !------------------------------------------------------------------------------
     psolver              = 'multigrid',
-    mg_cycles            = 3,            ! no. of cycles in the multigrid scheme
+    mg_cycles            = 4,            ! no. of cycles in the multigrid scheme
     ngsrb                = 2,            ! no. of Gauss-Seidel iterations
     momentum_advec       = 'ws-scheme', 
     scalar_advec         = 'ws-scheme', 
@@ -116,7 +116,7 @@
     do3d_at_begin      = .F., 
     do2d_at_begin      = .F.,
 
-    dt_data_output     =  10.0, 
+    dt_data_output     = 300.0, 
     dt_data_output_av  = 600.0,
     averaging_interval = 600.0,
     dt_averaging_input =   1.0, 
