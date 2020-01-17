@@ -14,7 +14,7 @@
 ! You should have received a copy of the GNU General Public License along with
 ! PALM. If not, see <http://www.gnu.org/licenses/>.
 !
-! Copyright 1997-2019 Leibniz Universitaet Hannover
+! Copyright 1997-2020 Leibniz Universitaet Hannover
 !------------------------------------------------------------------------------!
 !
 ! Current revisions:
@@ -24,7 +24,19 @@
 ! 
 ! Former revisions:
 ! -----------------
-! $Id: user_module.f90 4182 2019-08-22 15:20:23Z scharf $
+! $Id: user_module.f90 4360 2020-01-07 11:25:50Z suehring $
+! Introduction of wall_flags_total_0, which currently sets bits based on static
+! topography information used in wall_flags_static_0
+! 
+! 4329 2019-12-10 15:46:36Z motisi
+! Renamed wall_flags_0 to wall_flags_static_0
+! 
+! 4287 2019-11-01 14:50:20Z raasch
+! reading of namelist file and actions in case of namelist errors revised so that statement labels
+! and goto statements are not required any more; this revision also removes a previous bug
+! which appeared when the namelist has been commented out in the namelist file
+! 
+! 4182 2019-08-22 15:20:23Z scharf
 ! Corrected "Former revisions" section
 ! 
 ! 3986 2019-05-20 14:08:14Z Giersch
@@ -213,20 +225,20 @@
 !------------------------------------------------------------------------------!
  SUBROUTINE user_parin
 
+    CHARACTER (LEN=80) ::  line        !< string containing the last line read from namelist file
 
-    CHARACTER (LEN=80) ::  line   !< 
-
-    INTEGER(iwp) ::  i                 !< 
+    INTEGER(iwp) ::  i                 !<
+    INTEGER(iwp) ::  io_status         !< status after reading the namelist file
     INTEGER(iwp) ::  j                 !< 
 
 
-    NAMELIST /user_parameters/  &
-       user_module_enabled, &
-       data_output_pr_user, &
-       data_output_user, &
-       region, &
-       salsa_dynamic_background_concentrations, &
-       salsa_static_background_concentrations, &
+    NAMELIST /user_parameters/                                                                     &
+       data_output_masks_user,                                                                     &
+       data_output_pr_user,                                                                        &
+       data_output_user,                                                                           &
+       region,                                                                                     &
+       salsa_dynamic_background_concentrations,                                                    &
+       salsa_static_background_concentrations,                                                     &
        data_output_masks_user
 
 !
@@ -244,29 +256,27 @@
 
 !
 !-- Position the namelist-file at the beginning (it was already opened in
-!-- parin), search for user-defined namelist-group ("userpar", but any other
-!-- name can be choosed) and position the file at this line.
+!-- parin), and try to read (find) a namelist named "user_parameters".
     REWIND ( 11 )
+    READ( 11, user_parameters, IOSTAT=io_status )
 
-    line = ' '
-    DO WHILE ( INDEX( line, '&user_parameters' ) == 0 )
-       READ ( 11, '(A)', END=12 )  line
-    ENDDO
-    BACKSPACE ( 11 )
+!
+!-- Actions depending on the READ status
+    IF ( io_status == 0 )  THEN
+!
+!--    User namelist found and correctly read. Set default module switch to true. This activates
+!--    calls of the user-interface subroutines.
+       user_module_enabled = .TRUE.
 
-!-- Set default module switch to true
-    user_module_enabled = .TRUE.
+    ELSEIF ( io_status > 0 )  THEN
+!
+!--    User namelist was found, but contained errors. Print an error message containing the line
+!--    that caused the problem
+       BACKSPACE( 11 )
+       READ( 11 , '(A)') line
+       CALL parin_fail_message( 'user_parameters', line )
 
-!-- Read user-defined namelist
-    READ ( 11, user_parameters, ERR = 10 )
-
-    GOTO 12
-
-10  BACKSPACE( 11 )
-    READ( 11 , '(A)') line
-    CALL parin_fail_message( 'user_parameters', line )
-
-12  CONTINUE
+    ENDIF
 
 !
 !-- Determine the number of user-defined profiles and append them to the

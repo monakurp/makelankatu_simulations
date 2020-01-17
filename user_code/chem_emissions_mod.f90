@@ -25,7 +25,10 @@
 ! 
 ! Former revisions:
 ! -----------------
-! $Id: chem_emissions_mod.f90 4242 2019-09-27 12:59:10Z suehring $
+! $Id: chem_emissions_mod.f90 4356 2019-12-20 17:09:33Z suehring $
+! Minor formatting adjustment
+! 
+! 4242 2019-09-27 12:59:10Z suehring
 ! Adjust index_hh access to new definition accompanied with new 
 ! palm_date_time_mod. Note, this is just a preleminary fix. (E Chan)
 ! 
@@ -939,7 +942,7 @@ SUBROUTINE chem_emissions_match( emt_att,len_index )
     USE palm_date_time_mod, &
         ONLY: days_per_week, get_date_time, hours_per_day, months_per_year, seconds_per_day
    
- IMPLICIT NONE
+    IMPLICIT NONE
   
 
     TYPE(chem_emis_att_type), INTENT(INOUT) ::  emt_att                         !< variable to store emission information 
@@ -1114,6 +1117,9 @@ SUBROUTINE chem_emissions_match( emt_att,len_index )
 ! MONA:
           index_hh = INT( FLOOR( MAX( 0.0_wp, time_since_reference_point ) / 3600.0 ) )
           write(9,*) 'index_hh = ', index_hh, time_since_reference_point
+          write(9,*) dt_emission <= time_since_reference_point
+          write(9,*) findloc( dt_emission <= time_since_reference_point, .TRUE. )
+          write(9,*) maxval( findloc( dt_emission <= time_since_reference_point, .TRUE. ) )
           flush(9)
 !          index_hh = days_since_reference_point * hours_per_day + hour_of_day
 !*******************************************************************************
@@ -1480,6 +1486,7 @@ SUBROUTINE chem_emissions_match( emt_att,len_index )
 !-- in common between the emission input data and the chemistry mechanism used
 
           DO  ispec = 1, n_matched_vars  
+ 
 ! (ecc)   
              emis_distribution(1,nys:nyn,nxl:nxr,ispec) =                                &
                        emt(match_spec_input(ispec))%                                     &
@@ -1676,6 +1683,7 @@ SUBROUTINE chem_emissions_match( emt_att,len_index )
 !-- Other species
 
                       ELSE
+
                          surf_def_h(0)%cssws(match_spec_model(ispec),m) =      &   ! ppm/s * m * kg/m3
                                emis_distribution(1,j,i,ispec) *                &   ! kg/m2/s
                                ( 1.0_wp / emt_att%xm(ispec) ) *                &   ! mole/kg 

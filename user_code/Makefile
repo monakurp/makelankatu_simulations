@@ -27,12 +27,26 @@
 # 
 # Former revisions:
 # -----------------
-# $Id: Makefile 4281 2019-10-29 15:15:39Z schwenkel $
+# $Id: Makefile 4366 2020-01-09 08:12:43Z raasch $
+# add dependency on fft for transpose
+# 
+# 4347 2019-12-18 13:18:33Z suehring
+# add dependency to basic_constants_and_equations_mod for dynamics_mod
+# 
+# 4331 2019-12-10 18:25:02Z suehring
+# Move diagnostic surface output to diagnostic_output_quantities
+# 
+# 4309 2019-11-26 18:49:59Z suehring
+# Add dependency to parallel random generator for synthetic turbulence generator
+# 
+# 4286 2019-10-30 16:01:14Z resler
 # delete boundary_conds, added missing dependencies
 # 
 # 4270 2019-10-23 10:46:20Z monakurppa
 # - Implement offline nesting for salsa and add dependency of nesting_offl_mod
 #   on salsa_mod
+#   set-up in which self-nesting is applied for the flow but the offline nesting
+#   for salsa
 # - Add dependency on basic_constants_and_equations_mod for salsa_mod
 # 
 # 4258 2019-10-07 13:29:08Z suehring
@@ -517,7 +531,8 @@ data_output_3d.o: \
 	urban_surface_mod.o
 diagnostic_output_quantities_mod.o: \
 	mod_kinds.o \
-	modules.o
+	modules.o \
+	surface_layer_fluxes_mod.o
 diffusion_s.o: \
 	mod_kinds.o \
 	modules.o \
@@ -547,6 +562,7 @@ disturb_heatflux.o: \
 	random_generator_parallel_mod.o \
 	surface_mod.o
 dynamics_mod.o: \
+	basic_constants_and_equations_mod.o \
 	mod_kinds.o \
         surface_mod.o \
         pmc_interface_mod.o \
@@ -1078,6 +1094,7 @@ synthetic_turbulence_generator_mod.o: \
 	modules.o \
 	nesting_offl_mod.o \
 	pmc_interface_mod.o \
+	random_generator_parallel_mod.o \
 	surface_mod.o
 temperton_fft_mod.o: \
 	mod_kinds.o \
@@ -1125,6 +1142,7 @@ time_integration.o: \
 time_integration_spinup.o: \
 	basic_constants_and_equations_mod.o \
 	cpulog_mod.o \
+	diagnostic_output_quantities_mod.o \
 	land_surface_model_mod.o \
 	mod_kinds.o \
 	modules.o \
@@ -1148,6 +1166,7 @@ timestep_scheme_steering.o: \
 	modules.o
 transpose.o: \
 	cpulog_mod.o \
+	fft_xy_mod.o \
 	mod_kinds.o \
 	modules.o
 tridia_solver_mod.o: \
