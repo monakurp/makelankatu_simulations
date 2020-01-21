@@ -112,7 +112,7 @@ for i in range(nPc[1]):
     elif (water > 0):
         nsurface_frac[i,j,2] = 1
     else:
-        nsurface_frac[i,j,:] = -9999.9
+        nsurface_frac[i,j,:] = -9999.0
 
 
 
