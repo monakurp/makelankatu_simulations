@@ -24,7 +24,9 @@ reglim = [2.5e-9, 10.0e-9, 2.5e-6]  # subrange diameter limits
 
 fill_value = np.nan#-9999
 
-hourly = False
+hourly = False # calculate hourly emissions (if False, calculate every 15 minutes)
+biobus = False # assume that all busses use bioful (like HSL buses)
+PM_HSY = False # use emission data provided by Anu Kousa from HSY
 
 # coordinates of the HSY supersite
 #easting_HSY  = 25497337.38
@@ -37,7 +39,7 @@ hourly = False
 date = '{}{:02d}{:02d}'.format(year,month,day)
 
 if ( date=='20170609' and tod=='morning' ):
-  start_hour = 7
+  start_hour = 6
   start_min  = 0
   end_hour   = 9
   end_min    = 15
@@ -45,7 +47,7 @@ if ( date=='20170609' and tod=='morning' ):
 
 if ( date=='20170609' and tod=='evening' ):
   start_hour = 20
-  start_min  = 10
+  start_min  = 55
   end_hour   = 21
   end_min    = 15
   plusUTC    = 3
@@ -92,9 +94,24 @@ if hourly:
 else:
   suffix = '_15min'
 
+if PM_HSY:
+  HSY_or_not = '_HSY'
+else:
+  HSY_or_not = ''
+  
+if biobus:
+  biobus_or_not = '_biobus'
+else:
+  biobus_or_not = ''
+
 file_emissions = 'source_data/EEA_calculated_EF{}.csv'.format( suffix )
 file_psd_shape = 'source_data/hietikko2018_fig7.csv'
 file_HDD = 'source_data/HDD_Kaisaniemi.csv'
+file_emissions_HSY = 'source_data/HSY/emissions_PM_makelankatu_2017.xlsx'
+
+pids_folder = 'input_data_to_palm/cases/{}_{}'.format( date, tod )
+pids_salsa_out = '{}/PIDS_SALSA_N03{}{}{}'.format( pids_folder, suffix, HSY_or_not, biobus_or_not )
+pids_chem_out = '{}/PIDS_CHEM_N03{}'.format( pids_folder, suffix )
 
 #%% Read in input files
 
@@ -114,6 +131,17 @@ emission = emission.loc[mask]  # select only hours needed
 
 # Heating degree days
 HDD_data = np.genfromtxt( file_HDD, delimiter=',' ) # year, month, day, T, HDD
+
+# HSY emission data in g/km (multiplied by the traffic rate already)
+def dateparse_fleetdistr(date_string):
+    dt = pd.datetime.strptime(date_string, '%Y %m %d %H')
+    return dt
+emission_HSY = pd.read_excel( file_emissions_HSY, 'Taul1', delimiter=',', header=4, 
+                              date_parser=dateparse_fleetdistr, 
+                              parse_dates={'datetime' : ['Year','Month','Day','Hour']})
+mask = ( emission_HSY['datetime'] >= '{}-{}-{} {}:00:00'.format( date[0:4],date[4:6],date[6::],start_hour ) ) & \
+       ( emission_HSY['datetime'] <= '{}-{}-{} {}:00:00'.format( date[0:4],date[4:6],date[6::],end_hour+1 ) )
+emission_HSY = emission_HSY.loc[mask]  # select only hours needed
 
 #%% Manipulate lane and street maps
 
@@ -189,7 +217,8 @@ st_map[ ( ( mask==12 ) & ( street_type_map==2 ) ) ] = st_index[4]
 
 # Makelankadun pohjoisosa:
 # Etelaan:
-st_map[ ( ( ( mask==3 ) | ( mask==7 ) | ( mask==8 ) | (mask==13 ) | (mask==15 ) | (mask==16 )) & ( street_type_map==2 ) ) ] = st_index[5]
+st_map[ ( ( ( mask==3 ) | ( mask==7 ) | ( mask==8 ) | (mask==13 ) | (mask==15 ) | (mask==16 )) & \
+          ( street_type_map==2 ) ) ] = st_index[5]
 # Pohjoiseen:
 st_map[ ( ( ( mask==2 ) | ( mask==6 ) | (mask==9 ) ) & ( street_type_map==2 ) ) ] = st_index[6]
 
@@ -203,7 +232,8 @@ ax2    = fig2.add_subplot(gs[0])
 im21   = ax2.imshow( child_topo['R'], cmap='Greys', interpolation='None' )
 im22   = ax2.imshow( st_map, interpolation='None', cmap=cmap_new_st )
 cax2   = fig2.add_subplot(gs[1])
-cbar2  = fig2.colorbar( im22, cax=cax2, cmap=cmap_new_st, ticks=np.linspace(1.5,6.5,len(st_names) ) )
+cbar2  = fig2.colorbar( im22, cax=cax2, cmap=cmap_new_st, 
+                        ticks=np.linspace(1.5,6.5,len(st_names) ) )
 cbar2.ax.set_yticklabels(st_names, fontsize=10 )
 
 #%% Heat emissions from buildings and traffic
@@ -212,7 +242,8 @@ cbar2.ax.set_yticklabels(st_names, fontsize=10 )
 a0 = 6.8e6 * 3600.0 # W*h/capita * J/W*h = J/capita
 a2 = 0.0149 * 1.0e4 # W/K/capita
 
-HDD = HDD_data[ ( ( HDD_data[:,0]==year ) & ( HDD_data[:,1]==month ) & ( HDD_data[:,2]==day ) ), -1 ]
+HDD = HDD_data[ ( ( HDD_data[:,0]==year ) & ( HDD_data[:,1]==month ) & \
+                  ( HDD_data[:,2]==day ) ), -1 ]
 
 QF_per_capita = ( a0 + a2*HDD ) 
 
@@ -277,23 +308,38 @@ for s in emission_name:
 
   si += 1
 
-# Define aerosol adn heat emissions  
+# Define aerosol and heat emissions  
 if hourly:
   factor = 1.0 / 3600.0
 else:
   factor = 1.0 / 900.0
+
+# emission factor EF in g/m/veh
+if PM_HSY:
+  TR_HSY = np.sum( emission_HSY.iloc[:,1:5+1].values, axis=1 ) # veh/h
+  if biobus:
+    EF = emission_HSY.iloc[:,-1].values # g/km/H
+  else:
+    EF = emission_HSY.iloc[:,-3].values
+  EF = EF / 1000.0 / TR_HSY
+else:
+  EF = np.array( emission[' PM'] )  
+  
 for t in range( len( emission ) ): # time
+  
   for i in range( len( st_traffic_relative ) ): # street type
     TR = tr[t,i]  # veh/s
     is_street = ( st_map==st_index[i] )
+    
     if t==0 and i==0:
       do_plot = True
     else:
       do_plot = False
-
-    bin_limits, _, EF_bin = psd_from_data( file_psd_shape, np.array( emission[' PM'] )[t], bin_limits, 'mass', do_plot )
+  
+    bin_limits, _, EF_bin = psd_from_data( file_psd_shape, EF[t], bin_limits, 'mass', do_plot )
     aerosol_emission_values[t,is_street,:] = np.sum( EF_bin ) * TR * 1./st_width[i] * factor
-    heat_traffic[t,is_street] = np.array( emission[' E (heat from traffic)'] )[t] * TR * 1./st_width[i] * factor # J/(m*veh) * veh/s * 1/m = J/m2s = W/m2
+    heat_traffic[t,is_street] = np.array( emission[' E (heat from traffic)'] )[t] * TR * \
+                                1./st_width[i] * factor # J/(m*veh) * veh/s * 1/m = J/m2s = W/m2
 
 number_fracs = np.zeros([ len( ncat ), nbins ])
 number_fracs[0,:] += EF_bin / np.sum( EF_bin )
@@ -310,11 +356,9 @@ aerosol_emission_values[aerosol_emission_values==0] = -9999.0
   
 #%% Save into a file: aerosol and gas emissions
 
-pids_folder = 'input_data_to_palm/cases/{}_{}'.format( date, tod )
-
 pids_static = nc.Dataset( '{}/PIDS_STATIC_N03'.format( pids_folder, tod ), 'r')
-pids_salsa  = nc.Dataset( '{}/PIDS_SALSA_N03{}'.format( pids_folder, suffix ), 'w', format='NETCDF4' )
-pids_chem   = nc.Dataset( '{}/PIDS_CHEM_N03{}'.format( pids_folder, suffix ), 'w', format='NETCDF4' )
+pids_salsa  = nc.Dataset( pids_salsa_out, 'w', format='NETCDF4' )
+pids_chem   = nc.Dataset( pids_chem_out, 'w', format='NETCDF4' )
 
 dims = ['x','y']
 max_string_length = np.linspace( 1, 25, 25 )
@@ -325,12 +369,18 @@ if hourly:
   dt = 3600.0
 else:
   dt = 900.0
-time_emission = np.arange( time_start, time_start + ( len( emission ) - 1 )*dt+1, dt )
+time_emission = np.arange( time_start, time_start + ( len( emission ) - 1 )*dt+1, dt ) 
+time_emission[0] += start_min*60
+time_emission -= time_emission[0]
 
 for dsout in [pids_salsa, pids_chem]:
   
   # Global attributes:
   dsout.setncatts( pids_static.__dict__ )
+  dsout.author = 'Mona Kurppa (mona.kurppa@helsinki.fi)'
+  dsout.contact_person = 'Mona Kurppa (mona.kurppa@helsinki.fi)'
+  dsout.source = 'http://lipasto.vtt.fi, HSY (personal communication),'\
+    'https://www.eea.europa.eu/publications/emep-eea-guidebook-2016/part-b-sectoral-guidance-chapters/1-energy/1-a-combustion/1-a-3-b-i/view'
  
   # Dimensions:
   for name, dimension in pids_static.dimensions.items():
@@ -356,7 +406,7 @@ for dsout in [pids_salsa, pids_chem]:
 
 # Only for chemistry:
 
-# z:  
+# z:
 pids_chem.createDimension( 'z', 1 )
 zi = pids_chem.createVariable( 'z', 'f4', ('z',),)
 zi[:] = 0.0

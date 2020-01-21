@@ -65,7 +65,6 @@ def psd_from_data( input_file, EF, bin_limits, input_type, plot ):
   rho   = 2000.0
   
   if input_type == 'mass':
-    EF    = 1.0e-5 # in g/m2/s
     V    = np.array([0.00015*EF, 0.008*EF, 0.3*EF, 0.22*EF ])
     V    = V / ( rho * 1e3 ) *1e12 
     n = 6.0 * V / (np.pi * (1.0e-3*dpg)**3 * np.exp(9.0/2.0 * np.log(sigma)**2) )

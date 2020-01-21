@@ -33,3 +33,5 @@ input_data_to_palm/cases/20170614_morning/PIDS_DYNAMIC_real_N03 filter=lfs diff=
 input_data_to_palm/cases/20170609_morning/PIDS_CHEM_N03_15min filter=lfs diff=lfs merge=lfs -text
 input_data_to_palm/cases/20170609_morning/old_PIDS_DYNAMIC_real_N03 filter=lfs diff=lfs merge=lfs -text
 input_data_to_palm/cases/20171207_morning/PIDS_DYNAMIC_real_N03 filter=lfs diff=lfs merge=lfs -text
+input_data_to_palm/cases/20170609_morning/PIDS_SALSA_N03_HSY filter=lfs diff=lfs merge=lfs -text
+input_data_to_palm/cases/20170609_morning/PIDS_SALSA_N03_HSY_biobus filter=lfs diff=lfs merge=lfs -text
