@@ -1117,9 +1117,6 @@ SUBROUTINE chem_emissions_match( emt_att,len_index )
 ! MONA:
           index_hh = INT( FLOOR( MAX( 0.0_wp, time_since_reference_point ) / 3600.0 ) )
           write(9,*) 'index_hh = ', index_hh, time_since_reference_point
-          write(9,*) dt_emission <= time_since_reference_point
-          write(9,*) findloc( dt_emission <= time_since_reference_point, .TRUE. )
-          write(9,*) maxval( findloc( dt_emission <= time_since_reference_point, .TRUE. ) )
           flush(9)
 !          index_hh = days_since_reference_point * hours_per_day + hour_of_day
 !*******************************************************************************
