@@ -86,16 +86,13 @@ dPc=[dPx3D[1], dPx3D[0], dPx3D[2]]
 print(" 3D grid array dimensions [x,y,z]: {}, {}, {}".format(*nPc))
 print(" Generating fractions ...")
 
-#ToDo Fix: for some reason, where there's overlap between all three layers, PALM calculates the summed fractions
-#as >1. 
+# !!! Not yet implemented in PALM-------
 for i in range(nPc[1]):
   for j in range(nPc[0]):
     vege  = R1[i,j] #nsurface_frac[:,:,0]
     pavem = R2[i,j] #nsurface_frac[:,:,1]
     water = R3[i,j] #nsurface_frac[:,:,2]
     
-
-
     if (vege > 0 and pavem > 0):
         nsurface_frac[i,j,0] = 0.5
         nsurface_frac[i,j,1] = 0.5
@@ -113,7 +110,7 @@ for i in range(nPc[1]):
         nsurface_frac[i,j,2] = 1
     else:
         nsurface_frac[i,j,:] = -9999.0
-
+# !!!-----------------------------------
 
 
 print(" ... done.\n")

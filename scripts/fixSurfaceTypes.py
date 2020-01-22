@@ -142,7 +142,7 @@ labeled_array, num_features = snm.label( Rmod )
 if np.sum( labeled_array < 0 ) > 0:
   print('Negative building_id! Exiting.')
   sys.exit(1)
-labeled_array[labeled_array==0] = -127
+labeled_array[labeled_array==0] = -9999
 R7 = labeled_array.astype(int)
 del Rmod, labeled_array, num_features
 
@@ -226,6 +226,19 @@ for i in range(nPx[0]):
 # Info about building type overlayed onto building mask from building height layer.
 idx = R5 > 0
 R4[idx] = R5[idx]
+
+
+# Grind building type into building mask to avoid edges of invalid building type values.
+idb = (R4 != 5) & (R4 != -127)
+
+idground = R4 < 0
+
+idbb = snm.morphology.binary_dilation(idb,iterations=2)
+
+R4[idbb] = 2
+R4[idground] = -127
+
+
 
 # Update labels according to PIDS
 
