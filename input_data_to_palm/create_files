@@ -130,21 +130,21 @@ maskFromRasterTile.py -f landuse_child.npz -fo building_id_child.npz -mv 6
 
 
 #replace user-defined values
-replaceRasterValues.py -f water_child.npz -fo water_child.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
-replaceRasterValues.py -f pavement_child.npz -fo pavement_child.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
-replaceRasterValues.py -f soil_child.npz -fo soil_child.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
-replaceRasterValues.py -f vegetation_child.npz -fo vegetation_child.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
-replaceRasterValues.py -f soil_child.npz -fo soil_child.npz -gt 6 -v 2 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f water_child.npz -fo water_child.npz -lt 1 -v -127 -p1 0 0 -p2 576 576
+replaceRasterValues.py -f pavement_child.npz -fo pavement_child.npz -lt 1 -v -127 -p1 0 0 -p2 576 576
+replaceRasterValues.py -f soil_child.npz -fo soil_child.npz -lt 1 -v -127 -p1 0 0 -p2 576 576
+replaceRasterValues.py -f vegetation_child.npz -fo vegetation_child.npz -lt 1 -v -127 -p1 0 0 -p2 576 576
+replaceRasterValues.py -f soil_child.npz -fo soil_child.npz -gt 6 -v 2 -p1 0 0 -p2 576 576
 
 # clean topography
 rasterTileSubtraction.py -f topo_child.npz -fs oro_child.npz -fm building_id_child.npz -mvl 6.0 -ntp -fo topo_child.npz
 
 # same as with root/parent
-replaceRasterValues.py -f topo_child.npz -fo building_id_child.npz -gt 0 -v 1 -p1 0 0 -p2 768 768
-replaceRasterValues.py -f building_id_child.npz -fo building_child.npz -gt 0 -v 5 -p1 0 0 -p2 768 768 
-replaceRasterValues.py -f topo_child.npz -fo topo_child.npz -lt 0.000000001 -v -9999.0 -p1 0 0 -p2 768 768 
-replaceRasterValues.py -f building_id_child.npz -fo building_id_child.npz -lt 1 -v -9999 -p1 0 0 -p2 768 768
-replaceRasterValues.py -f building_child.npz -fo building_child.npz -lt 1 -v -127 -p1 0 0 -p2 768 768
+replaceRasterValues.py -f topo_child.npz -fo building_id_child.npz -gt 0 -v 1 -p1 0 0 -p2 576 576
+replaceRasterValues.py -f building_id_child.npz -fo building_child.npz -gt 0 -v 5 -p1 0 0 -p2 576 576
+replaceRasterValues.py -f topo_child.npz -fo topo_child.npz -lt 0.000000001 -v -9999.0 -p1 0 0 -p2 576 576 
+replaceRasterValues.py -f building_id_child.npz -fo building_id_child.npz -lt 1 -v -9999 -p1 0 0 -p2 576 576
+replaceRasterValues.py -f building_child.npz -fo building_child.npz -lt 1 -v -127 -p1 0 0 -p2 576 576
 
 
 # fill missing surface types according to PIDS
