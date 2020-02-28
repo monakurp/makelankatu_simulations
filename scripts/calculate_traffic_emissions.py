@@ -8,7 +8,7 @@ folder =  '/home/monakurp/makelankatu_simulations/source_data'
 
 os.chdir( ( folder ) )
 
-hourly = False
+hourly = True
 
 #%% Read in traffic data
 
@@ -35,7 +35,7 @@ traffic = traffic.drop(['datetime'], axis = 1)
 
 #%% Read in vehicle fleet distribution
 
-filename = 'HSY/PaastotPMMakelankatu2017_50kmhViikonloppuVaihteluKABUSSIvaihtelu.xlsx'
+filename = 'HSY/emissions_PM_makelankatu_2017.xlsx'
 
 def dateparse_fleetdistr(date_string):
     dt = pd.datetime.strptime(date_string, '%Y %m %d %H')
@@ -63,11 +63,11 @@ fleet_distr = fleet_distr.drop(['datetime','Ha','pa','ka','ra','la'], axis=1)
 
 filename = 'VTT_suoritejakaumat.xlsx'
  
-suorite = pd.read_excel( filename, skiprows=4, skipfooter=4, 
+suorite = pd.read_excel( filename, skiprows=4, skipfooter=4,
                          usecols=np.arange(0,9,1))
 
 # drop uncecessary data rows
-suorite = suorite.drop( suorite.index[ [9,10,20,21,26,27,33,34] ] ) 
+suorite = suorite.drop( suorite.index[ [9,10,20,21,26,27,33,34] ] )
 suorite = suorite.set_index( suorite[2017] )
 suorite = suorite.drop([2017], axis=1)
 suorite.index.name = 'luokka'
@@ -83,14 +83,12 @@ suorite['Euro 4'].loc['LA diesel'] = 0.004
 suorite['Euro 5'].loc['LA diesel'] = 0.415 # includes also EEV
 suorite['Euro 6'].loc['LA diesel'] = 0.543
 
-# Fuel consumption according to VTT
-# rows: ['HA', 'PA', 'KAIP', 'KAP', 'LA']
-# cols: ['bensiini', 'FFV', 'diesel', 'kaasu', 'sahko PHEV bensiini', 'sahko PHEV diesel', 'sahko BEV', 'vety' ] 
-FC_VTT      = [[71.0, 64.0, 68.0, 50.1, 71.0, 68.0, 0.0, 0.0]]  # HA
-FC_VTT.append( [90.0, 90.0, 90.0, 90.0, 90.0, 90.0, 0.0, 0.0] ) # PA
-FC_VTT.append( [184., 184., 184., 184., 184., 184., 0.0, 0.0] ) # KAIP
-FC_VTT.append( [676., 676., 676., 676., 676., 676., 0.0, 0.0] ) # KAP
-FC_VTT.append( [423., 423., 423., 524., 423., 423., 0.0, 0.0] ) # LA
+#%% Fuel consumption from VTT
+
+filename = 'VTT_fuel_consumption.xlsx'
+FC_VTT = pd.read_excel( filename, skiprows=1, skipfooter=4, index_col=[0] )
+FC_VTT.index.name = 'luokka'
+FC_VTT = FC_VTT.fillna(0)
 
 #%% Read in EEA data
 
@@ -113,10 +111,10 @@ EEA_data['Euro Standard'].loc[EEA_data['Euro Standard']=='Euro 6 up to 2017'] = 
 
 # Biobuses
 
-bb = EEA_data[ ( ( EEA_data['Category']=='Buses' ) & 
-                 ( EEA_data['Fuel']=='Biodiesel' ) & 
+bb = EEA_data[ ( ( EEA_data['Category']=='Buses' ) &
+                 ( EEA_data['Fuel']=='Biodiesel' ) &
                  ( EEA_data['Road Slope']==0) & 
-                 ( EEA_data['Load']==1 ) ) ]         
+                 ( EEA_data['Load']==1 ) ) ]
 
 # - Use “passenger car medium” in EEA for “HA” in VTT
 # - Use “ECE-15.04” or “Conventional” in EEA “Euro 0” in VTT
@@ -126,8 +124,12 @@ bb = EEA_data[ ( ( EEA_data['Category']=='Buses' ) &
 # - Use “Light commercial vehicle N1-II” in EEA for “PA” in VTT
 # - Use “Large-SUV-Executive” in EEA for “PA kaasu” in VTT
 # - Use “Urban Buses Standard 15-18 t” with road slope=0 and load=1 in EEA for “LA” in VTT
-# - For “KAIP” in VTT, use an average of “Rigid <= 7,5 t” and “Rigid 14-20 t” with a road slope=0 and load=0.5
-# - For “KAP” in VTT, use an average of “Articulated 34-40 t” and “Articulated 50-60 t” with a road slope=0 and load=0.5
+# - For “KAIP” in VTT, use an average of “Rigid <= 7,5 t” and “Rigid 14-20 t” with a road slope=0
+#     and load=0.5
+# - For “KAP” in VTT, use an average of “Articulated 34-40 t” and “Articulated 50-60 t” with a road
+#     slope=0 and load=0.5
+# - For “KAIP” in VTT, use "pieni jakelukuorma-auto" with full load.
+# - For “KAP” in VTT, use "puoliperavaunuyhdistelma" with full load.
 
 partition = pd.read_excel( 'EEA_data_collected_details.xls' )
 FC = pd.read_excel( 'EEA_FC.xls' )
@@ -147,84 +149,103 @@ EEA_cat = ['Passenger Cars', 'Light Commercial Vehicles', \
 VTT_cat = ['HA', 'PA', 'KAIP', 'KAP', 'LA']
                 
 EEA_fuel = ['Petrol',   'Petrol', 'Diesel', 'CNG Bifuel ~ Petrol', 
-            'Petrol',              'Diesel',            'None',           'None' ] 
+            'Petrol',              'Diesel',            'None',           'None' ]
 VTT_fuel = ['bensiini', 'FFV',    'diesel', 'kaasu',               
-            'sahko PHEV bensiini', 'sahko PHEV diesel', 'sahko BEV', 'vety' ]                               
+            'sahko PHEV bensiini', 'sahko PHEV diesel', 'sahko BEV', 'vety' ]
  
-EEA_euros = ['Euro 0', 'Euro I', 'Euro II', 'Euro III','Euro IV', 'Euro V', 'Euro VI']  
+EEA_euros = ['Euro 0', 'Euro I', 'Euro II', 'Euro III','Euro IV', 'Euro V', 'Euro VI']
 VTT_euros = ['Euro 0', 'Euro 1', 'Euro 2', 'Euro 3','Euro 4', 'Euro 5', 'Euro 6'] 
 
-pols = ['PM Exhaust', 'NOx', 'VOC', 'SO2', 'N2O',  'NH3', 'E_heat']
+pols = ['PM Exhaust', 'NOx', 'VOC', 'SO2', 'N2O',  'NH3', 'E_heat', 'FC']
 
+
+# Filename:
 if hourly:
   fileout = 'EEA_calculated_EF.csv'
 else:
   fileout = 'EEA_calculated_EF_15min.csv'
+  
+# Open a new output file:  
 f1 = open( fileout, 'w+' )
 
-header = "start time, end time, traffic to city (veh/h), traffic from city (veh/h), PM, BC, OC, NOx, NO, NO2, VOC, OCSV, alkanes, SO2, N2O, NH3, E (heat from traffic)"
+# Write the header:
+header = 'start time, end time, traffic to city (veh/h), traffic from city (veh/h), PM, BC, OC, '\
+         'NOx, NO, NO2, VOC, OCSV, alkanes, SO2, N2O, NH3, E (J/m), FC_VTT, FC_EEA'
 print( "# EF in g/m/veh assuming a fleet distribution similar to Makelankatu", file=f1 )
-print( header, file=f1 )      
+print( header, file=f1 )
 
+
+# Start the loops:
 ti = 1
+
 for month in [6, 12]:
-  
+
   if month==6:
     days = [9, 14]
   elif month==12:
     days = [5, 7]
-    
+
   for day in days:
-    
+
     for hour in range( 24 ):
-      
+
       if hourly:
         minutes = [0]
       else:
         minutes = [0, 15, 30, 45]
-        
+
+      # Time strings:
       timestr  = '{}-{:02d}-{:02d} {:02d}:00:00'.format( year, month, day, hour )
-      timestr2 = '{}-{:02d}-{:02d} {:02d}:59:00'.format( year, month, day, hour )   
-      
-      V = speed['Nopeus'].loc[timestr]     
-      
-      # 30% less traffic at the supersite than at the traffic measurement location   
+      timestr2 = '{}-{:02d}-{:02d} {:02d}:59:00'.format( year, month, day, hour )
+
+      # Driving speed:
+      V = speed['Nopeus'].loc[timestr]
+
+      # Traffic rate: 30% less traffic at the supersite than at the traffic measurement location
       T =  0.7 * ( traffic['autot'].loc[timestr:timestr2].sum() + \
-                   traffic['autot.1'].loc[timestr:timestr2].sum() ) 
-        
+                   traffic['autot.1'].loc[timestr:timestr2].sum() )   
       to_city   = traffic['autot'].loc[timestr:timestr2].sum() * 0.7
       from_city = traffic['autot.1'].loc[timestr:timestr2].sum() * 0.7
-    
-      datarow = '{}, {}, {}, {}'.format( timestr, timestr2, to_city, from_city )  
-      
+
+      # Initialise the data row:
+      datarow = '{}, {}, {}, {}'.format( timestr, timestr2, to_city, from_city )
+
+      # Print loop information on the console:
       print( '{}-{} ({}/{})'.format( timestr, timestr2, ti, 4*24 ) )
-        
+
       for minute in minutes:
         timestr_min  = '{}-{:02d}-{:02d} {:02d}:{:02d}:00'.format( year, month, day, hour, minute )
         timestr2_min = '{}-{:02d}-{:02d} {:02d}:{:02d}:00'.format( year, month, day, hour, minute+14 )
-      
+
         if not hourly:  # use 15 min traffic data if hourly==False
-          # 30% less traffic at the supersite than at the traffic measurement location   
-          T =  0.7 * ( traffic['autot'].loc[timestr_min] + traffic['autot.1'].loc[timestr_min] ) 
-            
+          # Traffic rate: 30% less traffic at the supersite than at the traffic measurement location
+          T =  0.7 * ( traffic['autot'].loc[timestr_min] + traffic['autot.1'].loc[timestr_min] )
+
           to_city   = 0.7 * traffic['autot'].loc[timestr_min] 
           from_city = 0.7 * traffic['autot.1'].loc[timestr_min]
-        
-          datarow = '{}, {}, {}, {}'.format( timestr_min, timestr2_min, to_city, from_city )            
-      
+
+          datarow = '{}, {}, {}, {}'.format( timestr_min, timestr2_min, to_city, from_city )
+
         if minute == 0:
+
+          # Initialise EF data row:
           EF_row = ''
+
+          # Loop through different pollutants:
           for pol in pols:
-            
-            EF  = 0            
+
+            EF  = 0
             BC  = 0
             OC  = 0
             NO  = 0
             NO2 = 0
-          
-            ci = 0
+            FCi = 0
+
+            ci = 0 # category index
+
+            # Loop through vehicle categories:
             for cat in VTT_cat:
-              
+
               if cat=='HA':
                 seg = ['Medium']
                 load = 0.0
@@ -240,27 +261,31 @@ for month in [6, 12]:
               elif cat=='LA':
                 seg = ['Urban Buses Standard 15 - 18 t']
                 load = 1.0 
-              
-              fi = 0
+
+              fi = 0 # fuel index
+
+              # Loop through fuel types:
               for fuel in VTT_fuel:
-                
+
+                # Loop through EURO classes:
                 for ei in range( len( EEA_euros ) ):
-                  
+
                   EEA_euro = EEA_euros[ei]
                   cati     = EEA_cat[ci]
                   fueli    = EEA_fuel[fi]
                   E = 0
-                  
+
+                  # Redefine some special cases:
                   if EEA_euro=='Euro 0':
                     if cat=='HA' and EEA_fuel[fi]=='Petrol':
                       EEA_euro = 'ECE 15/04' # petrol
                     else:
                       EEA_euro = 'Conventional' # diesel
-            
+
                   if ( ( fuel=='kaasu')  & (cat=='PA') ):
                     cati = 'Passenger Cars'
                     seg = ['Large-SUV-Executive']
-                    
+
                   if ( ( fuel=='kaasu')  & (cat=='LA') ):
                     fueli = 'CNG'
                     seg = ['Urban CNG Buses']
@@ -268,13 +293,14 @@ for month in [6, 12]:
                     load = 0.0
                     if ei==5:
                       EEA_euro = 'EEV'
-                      
+
+                  # Define the performance fraction ("suoriteosuus"):
                   if '{} {}'.format( cat, fuel ) in suorite.index:
                     s = suorite.loc['{} {}'.format( cat, fuel )][VTT_euros[ei]]
                   else:
-                    s = 0
-            
-                  # Find matching rows:
+                    continue
+
+                  # For PM, NOx and VOC, find matching rows:
                   if pol in str(['PM Exhaust', 'NOx', 'VOC']):
                     r = EEA_data[ ( (EEA_data['Category']==cati) & 
                                     (EEA_data['Fuel']==fueli) & 
@@ -282,50 +308,50 @@ for month in [6, 12]:
                                     (EEA_data['Pollutant/Energy consumption']==pol) & 
                                     (EEA_data['Road Slope']==slope) & 
                                     (EEA_data['Load']==load))]
-                                    
+
                     # Find matching segments:
                     if len(seg)==1:
                       r = r[ r['Segment']==seg[0] ]
                     else:
                       r = r[ ( ( r['Segment']==seg[0] ) | ( r['Segment']==seg[1] ) ) ]
-                      
+
                     # Find matching driving mode:  
                     rr = r[ r['Mode']==0 ]
                     if len(rr)==0:
                       rr =  r[ r['Mode']=='Urban Peak' ]
-                      
+
                     # If data exists, calculate the emission factor
                     if len(rr)>0:
                       E = ( rr['Alpha'] * V**2 + rr['Beta'] * V + rr['Gamma'] + rr['Delta'] / V)\
                           / ( rr['Epsilon'] * V**2 + rr['Zita'] * V + rr['Hta']) * \
                           ( 1 - rr['Reduction Factor [%]'] )   
                       E = np.nanmean(E.values)
-                      
+
                     # For hybrid vehicles, emission factor ~80% of a regular vehicle (VTT)
                     if ( fuel=='sähkö PHEV bensiini' or fuel=='sähkö PHEV bensiini' ):
                       E = 0.8 * E
-                      
+
                     # Include biobuses
                     if ( cat=='LA' and fuel==VTT_fuel[-1]):
-              
-                      fueli = 'Biodiesel'        
+
+                      fueli = 'Biodiesel'
                       
                       bbb = bb[ ( bb['Pollutant/Energy consumption']==pol ) & 
                                 ( bb['Euro Standard']==EEA_euro ) ]
                       Eb = ( bbb['Alpha'] * V**2 + bbb['Beta'] * V + bbb['Gamma'] + bbb['Delta'] / V)\
                           / ( bbb['Epsilon'] * V**2 + bbb['Zita'] * V + bbb['Hta']) * \
-                          ( 1 - bbb['Reduction Factor [%]'] )   
+                          ( 1 - bbb['Reduction Factor [%]'] )
                       E += np.nanmean(Eb.values)
-                      
+
                       s = suorite.loc['LA diesel'][VTT_euros[ei]] * x_biobus
-                      
+
                     if ( cat=='LA' and fuel=='diesel'):
                       s = suorite.loc['LA diesel'][VTT_euros[ei]] * (1 - x_biobus)
-                      
+
                     # Calculate emission factor per vehicle category, fuel and Euro standard
                     EF += E * fleet_distr[cat].loc[timestr:timestr2].sum() * s
-                  
-                    # Black and organic carbon:
+
+                    # Calculate black and organic carbon from the PM emission:
                     if pol == 'PM Exhaust':
                       pp = partition[((partition['Category']==cati) & 
                                       (partition['Fuel']==fueli) & 
@@ -336,7 +362,7 @@ for month in [6, 12]:
                                       (partition['Emission standard']==EEA_euro))]['BC/PM2.5']
                       if len(pp)>0:
                         BC += E * fleet_distr[cat].loc[timestr:timestr2].sum() * s * pp.values[0]
-                      
+
                       pp = partition[((partition['Category']==cati) & 
                                       (partition['Fuel']==fueli) & 
                                       (partition['Emission standard']==EEA_euro))]['OM/PM2.5']
@@ -346,8 +372,8 @@ for month in [6, 12]:
                                       (partition['Emission standard']==EEA_euro))]['OM/PM2.5']
                       if len(pp)>0:
                         OC += E * fleet_distr[cat].loc[timestr:timestr2].sum() * s * pp.values[0]
-              
-                    # NO and NO2:
+
+                    # NO and NO2 from NOx:
                     if pol == 'NOx':
                       pp = partition[((partition['Category']==cati) & 
                                       (partition['Fuel']==fueli) & 
@@ -359,7 +385,8 @@ for month in [6, 12]:
                       if len(pp)>0:
                         NO2 += E * fleet_distr[cat].loc[timestr:timestr2].sum() * s * pp.values[0]
                         NO += E * fleet_distr[cat].loc[timestr:timestr2].sum() * s * (1-pp.values[0])
-                        
+
+                  # Sulphur dioxide:
                   if pol=='SO2':
                     r = FC[ ( (FC['Category']==cati) & (FC['Fuel']==fueli) ) ]
                     if len(seg)==1:
@@ -367,9 +394,10 @@ for month in [6, 12]:
                     else:
                       rr = r[ ( ( r['Segment']==seg[0] ) | ( r['Segment']==seg[1] ) ) ]
                     if len(rr)>0:
-                      E = np.nanmean( 2 * rr['sulphur_content'] * rr['FC (g/km)'] )  
+                      E = np.nanmean( 2 * rr['sulphur_content'] * rr['FC (g/km)'] )
                       EF += E * fleet_distr[cat].loc[timestr:timestr2].sum() * s
-                      
+
+                  # Nitrous oxide and ammonia:  
                   if ( pol=='N2O' or pol=='NH3' ):
                     r = FC[ ( (FC['Category']==cati) & (FC['Fuel']==fueli) ) ]
                     pp = partition[((partition['Category']==cati) & 
@@ -382,21 +410,37 @@ for month in [6, 12]:
                     if len(rr)>0 and len(pp)>0:
                       ppi = pp
                       rri = rr
-                      E = np.nanmean( rr['FC (g/km)'] * pp.values[0] )  
+                      E = np.nanmean( rr['FC (g/km)'] * pp.values[0] )
                       EF += E * fleet_distr[cat].loc[timestr:timestr2].sum() * s
-                      
-                  if pol=='E_heat': # heat emission
+
+                  # Heat from traffic:
+                  if pol=='E_heat': 
                     r = FC[ ( (FC['Category']==cati) & (FC['Fuel']==fueli) ) ]
                     if len(seg)==1:
                       rr = r[ r['Segment']==seg[0] ]
                     else:
                       rr = r[ ( ( r['Segment']==seg[0] ) | ( r['Segment']==seg[1] ) ) ]
                     if len(rr)>0:
-                      E = np.nanmean( rr['Caloric value (J/kg)'] * rr['FC (g/km)'] * 1.0e-6 ) # J/m  
-                      EF += E * fleet_distr[cat].loc[timestr:timestr2].sum() * s # J/m
-                fi += 1    
+                      E = np.nanmean( rr['Caloric value (J/kg)'] * rr['FC (g/km)'] * 1.0e-3 ) # J/km
+                      EF += E * fleet_distr[cat].loc[timestr:timestr2].sum() * s # J/km
+
+                  # Fuel consumption:
+                  if pol=='FC':    
+                    r = FC_VTT.loc['{} {}'.format( cat, fuel )][VTT_euros[ei]]
+                    EF += np.nanmean( r ) * fleet_distr[cat].loc[timestr:timestr2].sum() * s
+
+                    r = FC[ ( (FC['Category']==cati) & (FC['Fuel']==fueli) ) ]
+                    if len(seg)==1:
+                      rr = r[ r['Segment']==seg[0] ]
+                    else:
+                      rr = r[ ( ( r['Segment']==seg[0] ) | ( r['Segment']==seg[1] ) ) ]
+                    if len(rr)>0:
+                      FCi += np.nanmean( rr['FC (g/km)']) * \
+                             fleet_distr[cat].loc[timestr:timestr2].sum() * s
+
+                fi += 1
               ci += 1
-            
+
             print( pol, EF )
             EF_row += ', {:4.3e}'.format( EF / 1000.0 )
             if pol=='PM Exhaust':
@@ -408,7 +452,10 @@ for month in [6, 12]:
             if pol=='VOC':
               EF_row += ', {:4.3e}'.format(0.01 * EF / 1000.0 )
               EF_row += ', {:4.3e}'.format(0.4  * EF / 1000.0 )
-        
+            if pol=='FC':
+              EF_row += ', {:4.3e}'.format( FCi / 1000.0 )
+              print( FCi / 1000.0 )
+
           outrow = datarow+EF_row
           print( datarow+EF_row, file=f1 )
           ti += 1
