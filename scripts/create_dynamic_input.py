@@ -14,23 +14,25 @@ np.set_printoptions( precision=10 )
 parameter = True
 variable  = False
 
-# -------------------------------------------------------------------------------------------------#
+# ------------------------------------------------------------------------------------------------#
 # PROVIDE THESE:
-# -------------------------------------------------------------------------------------------------#
+# ------------------------------------------------------------------------------------------------#
 
 # Simulation time: start of drone measurements - ~15min --> end of drone measurements
 sim_year    = 2017
 sim_month   = 6 # 12
-sim_day     = 14 # 7
+sim_day     = 9 # 7
 sim_time    = 'morning'
 datestr     = '{}{:02d}{:02d}'.format( sim_year, sim_month, sim_day )
-adchem_type = 'FRES' # or 'orig'
+adchem_type = 'FRES' # 'FRES' or 'orig'
 
-flow_spinup_min = 15
+precursor = False
+
+# ------------------------------------------------------------------------------------------------#
 
 if ( datestr=='20170609' and sim_time=='morning' ):
   start_hour = 7
-  start_min  = 15 - flow_spinup_min
+  start_min  = 0
   end_hour   = 9
   end_min    = 15
   plusUTC    = 3
@@ -56,6 +58,9 @@ elif ( datestr=='20171207' and sim_time=='morning' ):
   end_min    = 15
   plusUTC    = 2
 
+if precursor:
+  end_hour = start_hour
+  start_hour -= 1
 
 orig     = [60.1663312, 24.873065935] # 900 m shift to the left, was 24.8895075
 
@@ -82,7 +87,7 @@ if grid_type == 'real':
 
   dx_N03 = 1.0
   dy_N03 = 1.0
-  dz_N03 = 1.0   
+  dz_N03 = 1.0
   
   dt = 3600.0
 
@@ -113,9 +118,16 @@ ntimesteps = end_hour - start_hour + 1
 if end_min > 0:
   ntimesteps += 1
 
-# -------------------------------------------------------------------------------------------------#
+# ------------------------------------------------------------------------------------------------#
 
 #%% Filenames
+  
+out_folder = 'input_data_to_palm/cases/{}_{}'.format( datestr, sim_time )  
+  
+if grid_type=='test':
+  suffix = '_test'
+else:
+  suffix = ''
 
 fname_full_backup = 'source_data/cases/{}_{}/meps_mbr0_full_backup_2_5km_{}T00Z.nc'.format( \
                                        datestr, sim_time, datestr )
@@ -125,28 +137,42 @@ fname_soil        = 'source_data/ERA5_reanalysis_soil_cropped.nc'
 fname_adchem      = 'source_data/ADCHEM_data/09062017_{}.mat'.format( adchem_type )
 fname_soiltype    = 'input_data_to_palm/cases/{}_{}/PIDS_STATIC'.format( datestr, sim_time)
 
-fname_out     = 'input_data_to_palm/cases/{}_{}/PIDS_DYNAMIC_{}'.format( \
-                                          datestr, sim_time, grid_type )
-fname_out_N03 = 'input_data_to_palm/cases/{}_{}/PIDS_DYNAMIC_{}_N03'.format( \
-                                          datestr, sim_time, grid_type )
+if precursor:
+  fname_out     = '{}/PIDS_DYNAMIC_precursor{}'.format( out_folder, suffix )
+else:
+  fname_out     = '{}/PIDS_DYNAMIC{}'.format( out_folder, suffix )
+fname_out_N03 = '{}/PIDS_DYNAMIC_N03_{}{}'.format( out_folder, adchem_type, suffix )
+
+fname_gases = '{}/cs_profile.txt'.format( out_folder )
+
+#%% Create netCDF datasets
 
 dsout     = nc.Dataset( fname_out, 'w' )
-dsout_N03 = nc.Dataset( fname_out_N03, 'w' )
+if not precursor:
+  dsout_N03 = nc.Dataset( fname_out_N03, 'w' )
+  datas = [dsout, dsout_N03]
+else:
+  datas = [dsout]
 
 # Set global attributes:
-for dsouti in [dsout, dsout_N03]:
-  dsouti.title          = "PALM dynamic input file for scenario Makelankatu, morning 9 Jun 2017"
+for dsouti in datas:
+  dsouti.title          = "PALM dynamic input file for scenario Makelankatu, {} "\
+                          "{:02d}/{:02d}/{}".format( sim_time, sim_day, sim_month, sim_year)
   dsouti.institution    = 'INAR, University of Helsinki'
   dsouti.author         = 'Mona Kurppa (mona.kurppa@helsinki.fi)'
   dsouti.references     = "--"
-  dsouti.comment        = 'Data retrieved from MEPS data (model Harmonie, data archive: http://thredds.met.no/thredds/catalog/meps25epsarchive/catalog.html)'
   dsouti.origin_lat     = orig[0]
   dsouti.origin_lon     = orig[1]
   dsouti.origin_z       = 0.0
   dsouti.origin_time    = "{}-{:02d}-{:02d} {:02d}:{:02d}:00 +{:02d}".format( \
-                           sim_year, sim_month, sim_day, start_hour, start_min, plusUTC) #Was previously missing
+                           sim_year, sim_month, sim_day, start_hour, start_min, plusUTC)
   dsouti.palm_version   = "6.0"
   dsouti.rotation_angle = 0.0
+
+dsout.comment = 'Meteorological data retrieved from MEPS data (model Harmonie, data '\
+                'archive: http://thredds.met.no/thredds/catalog/meps25epsarchive/catalog.html)'
+if not precursor:
+  dsout_N03.comment = 'Air pollutant data retrieved from ADCHEM model (pontus.roldin@nuclear.lu.se)'
 
 #%% Corners of the simulation domain
 
@@ -287,10 +313,13 @@ soil_lon = np.array( soil['longitude'] )
 soil_lat = np.array( soil['latitude'] )
 soil_time = np.array( soil['time'] )
 
-soil_timestr = [dtime.datetime( 1900, 1, 1 ) + dtime.timedelta( hours=float(t1) ) for t1 in soil_time]
+soil_timestr = [dtime.datetime( 1900, 1, 1 ) + dtime.timedelta( hours=float(t1) ) for t1 in 
+                soil_time]
 
-zsoil = np.array([0.035, 0.175, 0.64, 1.945]) #https://confluence.ecmwf.int/display/CKB/ERA5-Land+data+documentation
-zsoil_PALM = np.array([0.01, 0.02, 0.04, 0.06, 0.14, 0.26, 0.54, 1.86]) #PALM default soil configuration
+ #https://confluence.ecmwf.int/display/CKB/ERA5-Land+data+documentation
+zsoil = np.array([0.035, 0.175, 0.64, 1.945])
+#PALM default soil configuration
+zsoil_PALM = np.array([0.01, 0.02, 0.04, 0.06, 0.14, 0.26, 0.54, 1.86])
 
 
 if grid_type=='real':
@@ -308,7 +337,7 @@ for t in range( len( soil_timestr ) ):
        soil_timestr[t].hour==start_hour-plusUTC ):
     ti1 = t
   if ( soil_timestr[t].month==sim_month and soil_timestr[t].day==sim_day and
-       soil_timestr[t].hour==end_hour-plusUTC ):  
+       soil_timestr[t].hour==end_hour-plusUTC ):
     ti2 = t
 if not 'ti1' in locals():
   ti1 = ti2-1
@@ -356,10 +385,9 @@ yv = np.linspace( dy, ly - dy, ny)
 
 # time: given in seconds from midnight in UTC time!
 seconds_in_hour = 3600.0
-dynamic_time_start = ( start_hour - plusUTC ) * seconds_in_hour
+dynamic_time_start = 0.0 #( start_hour - plusUTC ) * seconds_in_hour
 time_palm = np.arange( dynamic_time_start, dynamic_time_start + (ntimesteps-1)*dt+1, dt )
-#time_palm[0] += start_min*60.0
-#time_palm[-1] += end_min*60.0
+time_palm[0] += start_min*60.0
 
 #%% Save dimensions to the dynamic input file:
 
@@ -417,7 +445,8 @@ zsoilv.standard_name = "depth_below_land"
 # time:
 dsout.createDimension( 'time', len(time_palm) )
 timev = dsout.createVariable( 'time', 'f4', ('time',) )
-timev.units = 'seconds since {:04d}{:02d}{:02d} {}:00 UTC'.format( sim_year, sim_month, sim_day, start_hour)
+timev.units = 'seconds since {:04d}{:02d}{:02d} {}:00 UTC'.format( sim_year, sim_month, sim_day,
+                                                                   start_hour)
 timev[:] = time_palm
 timev.standard_name = "time"
 timev.long_name = "time"
@@ -441,10 +470,11 @@ for i in range( nx+1 ):
   for j in range( ny+1 ):
     for isl in range( len( id_soil_type ) ):
       if soil_type.data[j,i]== id_soil_type[isl]:
-        init_soil_m[init_soil_m[:,j,i]>max_soil_water_content[isl],j,i] = max_soil_water_content[isl]  
+        init_soil_m[init_soil_m[:,j,i]>max_soil_water_content[isl],j,i] = \
+          max_soil_water_content[isl]
 
-init_soil_m[:,soil_type.data==soil_type.fill_value] = -9999.0
-init_soil_t[:,soil_type.data==soil_type.fill_value] = -9999.0    
+#init_soil_m[:,soil_type.data==soil_type.fill_value] = -9999.0
+#init_soil_t[:,soil_type.data==soil_type.fill_value] = -9999.0
 
 #%% Interpolate variable fields to PALM grid
 
@@ -476,7 +506,8 @@ for a in range(  len( arrays_out ) ):
     
     # first interpolate in horizontal:
     for k in range( len(hybrid) ):
-      fhor = interp2d( longitude, latitude, arrays_in[a][t,k,:,:], kind='cubic', fill_value="extrapolate" )
+      fhor = interp2d( longitude, latitude, arrays_in[a][t,k,:,:], kind='cubic',
+                       fill_value="extrapolate" )
       temporary[k,:,:] = fhor( xlon, ylat )
       
       fhorZ = interp2d( longitude, latitude, Z[t,k,:,:], kind='cubic', fill_value="extrapolate" )
@@ -484,7 +515,8 @@ for a in range(  len( arrays_out ) ):
     
     for j in range( nys[a] ):
       for i in range( nxs[a] ):
-        fver = interp1d( Z_temporary[:,j,i], temporary[:,j,i], kind='linear', fill_value="extrapolate" )
+        fver = interp1d( Z_temporary[:,j,i], temporary[:,j,i], kind='linear',
+                         fill_value="extrapolate" )
         arrays_out[a][t,:,j,i] = fver( zs[a] )
 del arrays_in, temporary, Z_temporary
     
@@ -492,7 +524,7 @@ u_palm  = arrays_out[0]
 v_palm  = arrays_out[1]
 w_palm  = arrays_out[2]
 pt_palm = arrays_out[3]
-qv_palm = arrays_out[4]   
+qv_palm = arrays_out[4]
 
 del arrays_out
 
@@ -565,8 +597,8 @@ lnames = ["large-scale forcing for left model boundary for the wind component in
 
 for a in range( len( arrays ) ):
   var   = arrays[a][:,:,:,0]
-  ncvar = dsout.createVariable( 'ls_forcing_left_{}'.format( names[a] ), 'f4', ( 'time', zs[a], ys[a] ), 
-                                fill_value=-9999.0 )
+  ncvar = dsout.createVariable( 'ls_forcing_left_{}'.format( names[a] ), 'f4', ( 'time', zs[a], 
+                                ys[a] ), fill_value=-9999.0 )
   ncvar[:] = var
   ncvar.units = units[a]
   ncvar.source = "MEPS analysis for 20170609"
@@ -584,8 +616,8 @@ lnames = ["large-scale forcing for right model boundary for the wind component i
 
 for a in range( len( arrays ) ):
   var   = arrays[a][:,:,:,-1]
-  ncvar = dsout.createVariable( 'ls_forcing_right_{}'.format( names[a] ), 'f4', ( 'time', zs[a], ys[a] ), 
-                                fill_value=-9999.0 )
+  ncvar = dsout.createVariable( 'ls_forcing_right_{}'.format( names[a] ), 'f4', ( 'time', zs[a], 
+                                ys[a] ), fill_value=-9999.0 )
   ncvar[:] = var
   ncvar.units = units[a]
   ncvar.source = "MEPS analysis for 20170609"
@@ -603,8 +635,8 @@ lnames = ["large-scale forcing for north model boundary for the wind component i
 
 for a in range( len( arrays ) ):
   var   = arrays[a][:,:,-1,:]
-  ncvar = dsout.createVariable( 'ls_forcing_north_{}'.format( names[a] ), 'f4', ( 'time', zs[a], xs[a] ), 
-                                fill_value=-9999.0 )
+  ncvar = dsout.createVariable( 'ls_forcing_north_{}'.format( names[a] ), 'f4', ( 'time', zs[a], 
+                                xs[a] ), fill_value=-9999.0 )
   ncvar[:] = var
   ncvar.units = units[a]
   ncvar.source = "MEPS analysis for 20170609"
@@ -622,8 +654,8 @@ lnames = ["large-scale forcing for south model boundary for the wind component i
 
 for a in range( len( arrays ) ):
   var   = arrays[a][:,:,0,:]
-  ncvar = dsout.createVariable( 'ls_forcing_south_{}'.format( names[a] ), 'f4', ( 'time', zs[a], xs[a] ), 
-                                fill_value=-9999.0 )
+  ncvar = dsout.createVariable( 'ls_forcing_south_{}'.format( names[a] ), 'f4', ( 'time', zs[a], 
+                                xs[a] ), fill_value=-9999.0 )
   ncvar[:] = var
   ncvar.units = units[a]
   ncvar.source = "MEPS analysis for 20170609"
@@ -641,8 +673,8 @@ lnames = ["large-scale forcing for top model boundary for the wind component in 
 
 for a in range( len( arrays ) ):
   var   = arrays[a][:,-1,:,:]
-  ncvar = dsout.createVariable( 'ls_forcing_top_{}'.format( names[a] ), 'f4', ( 'time', ys[a], xs[a] ), 
-                                fill_value=-9999.0 )
+  ncvar = dsout.createVariable( 'ls_forcing_top_{}'.format( names[a] ), 'f4', ( 'time', ys[a], 
+                                xs[a] ), fill_value=-9999.0 )
   ncvar[:] = var
   ncvar.units = units[a]
   ncvar.source = "MEPS analysis for 20170609"
@@ -675,242 +707,287 @@ ncvar.lod = 2
 
 #%% Air pollutants for the child domain
 
-avg_bg = True
-
-# Provide this information:
-maxspec = 7
-ls_names = ['left','right','north','south']
-ls_dimsname = ['y','y','x','x']
-
-# -------------------------------------------------------------------------------------------------#
-def integrate_profile( old_z, old_prof, new_z, new_prof ):
-
-  kk = 0
-  for k in np.arange(0,len(new_z),1):
-
-    if ( kk < len(old_z) ):
-      while ( old_z[kk+1] <= new_z[k] ):
-        kk = kk +1
-        if ( kk == len(old_z)-1 ):
-          break
-    
-    if ( kk < (len(old_z)-1) ):
-      new_prof[k] = old_prof[kk] + ( new_z[k] - old_z[kk] ) / ( old_z[kk+1] - old_z[kk] ) * \
-                    ( old_prof[kk+1] - old_prof[kk] )
-    else:
-      new_prof[k] = old_prof[kk]
+if not precursor:
   
-  return new_prof
-
-# Read in the file
-adchem = hdf5storage.loadmat( fname_adchem )
-
-dmid = np.squeeze( adchem['dmid'] )
-prof_z = np.squeeze( adchem['z'] )
-
-smonth = int( adchem['smonth'][0][0] )
-emonth = int( adchem['emonth'][0][0] )
-sday   = int( adchem['sday'][0][0] )
-eday   = int( adchem['eday'][0][0] )
-shour  = int( adchem['shour'][0][0] )
-ehour  = int( adchem['ehour'][0][0] )
-
-# Select correct times:
-adchem_timestring = np.arange( '{:04d}-{:02d}-{:02d}T{:02d}:00'.format( sim_year, smonth, sday, shour ),
-                               '{:04d}-{:02d}-{:02d}T{:02d}:00'.format( sim_year, emonth, eday, ehour ),
-                               dtype='datetime64[h]')
-for t in range( len( time ) ):
-  for tt in range( len( adchem_timestring ) ):
-    if timestring[t] == adchem_timestring[tt]:
-      if ( timestring[t].hour + plusUTC ) == start_hour:  ### CHECK plusutc FROM PONTUS!!!
-        ss = tt
-      if ( timestring[t].hour + plusUTC ) == end_hour+1:  ### CHECK plusutc FROM PONTUS!!! 
-        ee = tt
-
-ncc = len( adchem['composition_name'][0] )
-composition_index = np.linspace( 1, ncc, ncc ) 
-composition_name = []
-for cc in range ( ncc ):
-  composition_name.append('{:25}'.format( adchem['composition_name'][0][cc][0][0] ) )
-max_string_length = np.linspace( 1, len( composition_name[0] ), len( composition_name[0] ) )
-
-# PALM grid:
-
-# PALM model extents:
-lx_N03 = (nx_N03+1) * dx_N03
-ly_N03 = (ny_N03+1) * dy_N03
-
-z_column = np.zeros( nz_N03+1, dtype=float )
-z_column[0] = dz_N03 * 0.5
-for k in range( 1, len(z_column), 1):
-  z_column[k] = z_column[k-1] + dz_N03
-z_N03 = z_column[0:-1]
+  avg_bg = True
   
-x_N03 = np.linspace( 0.5*dx_N03, lx_N03 - 0.5*dx_N03, nx_N03+1)
-y_N03 = np.linspace( 0.5*dy_N03, ly_N03 - 0.5*dy_N03, ny_N03+1)
-
-
-# Save dimensions to the dynamic input file:
-
-dims = ['x','y','z','time','Dmid','composition_index','max_string_length']
-arrays = [x_N03, y_N03, z_N03, time_palm, dmid, composition_index, max_string_length]
-std_names = ['x coordinate of cell centers', 'y coordinate of cell centers', 
-             'z coordinate of cell centers', 'time', 'aerosol_geometric_mean_diameter','','']
-units = ['m','m','m',
-         'seconds since {:04d}{:02d}{:02d} {}:00 UTC'.format( sim_year, sim_month, sim_day, start_hour),
-         'm','']
-types = ['f4','f4','f4','f4','f4','i4','i4']
-
-for d in range( len( dims ) ):
-  dsout_N03.createDimension( dims[d], len( arrays[d] ) )
-  v = dsout_N03.createVariable( dims[d], 'f4', ( dims[d],) )
-  v[:] = arrays[d]
-  v.standard_name = std_names[d]
-  if dims[d]=='time':
-    v.long_name = "time"
-    
-# -----------------------------------------------------------------------------------------------#   
-# Initial profiles: 
-
-# aerosol chemical composition:      
-init_adchem_mf_a = np.mean( adchem['mass_fracs'][ss:ee+11,:,:], axis=0)
-init_mf_a = np.zeros( [ len( z_N03 ), ncc ], dtype=float  )
-for c in range( ncc ):
-  init_mf_a[:,c] = integrate_profile( prof_z, init_adchem_mf_a[:,c], z_N03, init_mf_a[:,c] )
-init_mf_b = 0.0 * init_mf_a
-
-# aerosol size distribution:
-init_adchem_psd = np.mean( adchem['psd'][ss:ee+1,:,:], axis=0 )
-nbins = np.shape( init_adchem_psd )[1]
-init_psd = np.zeros( [ len( z_N03 ), nbins ], dtype=float  )
-for b in range( nbins ):
-  init_psd[:,b] = integrate_profile( prof_z, init_adchem_psd[:,b], z_N03, init_psd[:,b] )
-
-# -----------------------------------------------------------------------------------------------#   
-# Forcing:
+  # Provide this information:
+  maxspec = 7
+  ls_names = ['left','right','north','south']
+  ls_dimsname = ['y','y','x','x']
   
-ls_dims = [ y_N03, y_N03, x_N03, x_N03]
-
-# aerosol chemical composition:  
-lsf_adchem_mf_a = adchem['mass_fracs'][ss:ee+1,:,:]
-if avg_bg:
-  avgi = np.nanmean( lsf_adchem_mf_a, axis=0 )
-  for t in range( np.shape( lsf_adchem_mf_a )[0] ):
-    lsf_adchem_mf_a[t,:,:] = avgi
-lsf_mf_a = np.zeros( [ ee-ss+1, len( z_N03 ), ncc ], dtype=float  )
-for t in range( ee-ss+1 ):
-  for c in range( ncc ):
-    lsf_mf_a[t,:,c] = integrate_profile( prof_z, lsf_adchem_mf_a[t,:,c], z_N03, lsf_mf_a[t,:,c] )
-lsf_mf_b = 0.0 * lsf_mf_a
-
-# aerosol size distribution:
-lsf_adchem_psd = adchem['psd'][ss:ee+1,:,:]
-if avg_bg:
-  avgi = np.nanmean( lsf_adchem_psd, axis=0 )
-  for t in range( np.shape( lsf_adchem_psd )[0] ):
-    lsf_adchem_psd[t,:,:] = avgi
-lsf_psd = np.zeros( [ ee-ss+1, len( z_N03 ), nbins ], dtype=float  )
-for t in range( ee-ss+1 ):
-  for b in range( nbins ):
-    lsf_psd[t,:,b] = integrate_profile( prof_z, lsf_adchem_psd[t,:,b], z_N03, lsf_psd[t,:,b] )
-
-# -----------------------------------------------------------------------------------------------# 
-# SAVE VARIABLES TO PIDS_DYNAMIC:
-
-# namelist of chemical components:                            
-cn = dsout_N03.createVariable( 'composition_name', 'S1', ('composition_index','max_string_length',) )
-cn[:] = list( map( lambda x : list(x), composition_name ) )
-cn.long_name = 'aerosol composition name'
-cn.standard_name = 'composition_name' 
-                         
-# aerosol chemical composition:  
-init_mf_a_v = createNetcdfVariable( dsout_N03, init_mf_a, 'init_atmosphere_mass_fracs_a', 0,  
-                                    '', 'f4', ('z','composition_index',), variable, fill_value=-9999.0 )
-init_mf_a_v.long_name = "initial mass fraction profile: a bins" 
-                                       
-init_mf_b_v = createNetcdfVariable( dsout_N03, init_mf_b, 'init_atmosphere_mass_fracs_b', 0, 
-                                    '', 'f4', ('z','composition_index',), variable, fill_value=-9999.0  )                                          
-init_mf_b_v.long_name = "initial mass fraction profile: b bins"
-
-# forcing for aerosol chemical composition:
-nvi = 0
-for nv in ls_names:
-  dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi]), len(composition_index) ] )
-  for i in range( len( ls_dims[nvi] ) ):
-    dummy[:,:,i,:] = lsf_mf_a
-  namev = 'ls_forcing_{}_mass_fracs_a'.format(nv)
-  lsf_mf_a_v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '', 'f4', 
-                                     ('time','z',ls_dimsname[nvi], 'composition_index',), 
-                                     variable, fill_value=-9999.0 )
-  lsf_mf_a_v.long_name = "boundary conditions of mass fraction profile: a bins" 
+  # ----------------------------------------------------------------------------------------------#
+  def integrate_profile( old_z, old_prof, new_z, new_prof ):
+  
+    kk = 0
+    for k in np.arange(0,len(new_z),1):
+  
+      if ( kk < len(old_z) ):
+        while ( old_z[kk+1] <= new_z[k] ):
+          kk = kk +1
+          if ( kk == len(old_z)-1 ):
+            break
       
-  namev = 'ls_forcing_{}_mass_fracs_b'.format(nv)                                 
-  lsf_mf_b_v = createNetcdfVariable( dsout_N03, dummy*0, namev, 0, '', 'f4', 
-                                     ('time','z',ls_dimsname[nvi],'composition_index',), 
-                                     variable, fill_value=-9999.0  )                                          
-  lsf_mf_b_v.long_name = "boundary conditions of mass fraction profile: b bins"  
-  
-  nvi += 1
-
-dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ), len(composition_index) ] )
-for j in range( len( y_N03 ) ):
-  for i in range( len( x_N03 ) ):
-    dummy[:,j,i,:] = lsf_mf_a[:,-1,:]
-namev = 'ls_forcing_top_mass_fracs_a'
-lsf_mf_a_v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '', 'f4', 
-                                  ('time','y','x','composition_index',), 
-                                  variable, fill_value=-9999.0 )
-lsf_mf_a_v.long_name = "boundary conditions of mass fraction profile: a bins" 
+      if ( kk < (len(old_z)-1) ):
+        new_prof[k] = old_prof[kk] + ( new_z[k] - old_z[kk] ) / ( old_z[kk+1] - old_z[kk] ) * \
+                      ( old_prof[kk+1] - old_prof[kk] )
+      else:
+        new_prof[k] = old_prof[kk]
     
-namev = 'ls_forcing_top_mass_fracs_b'                               
-lsf_mf_b_v = createNetcdfVariable( dsout_N03, dummy*0, namev, 0, '', 'f4', 
-                                  ('time','y','x','composition_index',), 
-                                  variable, fill_value=-9999.0  )
-lsf_mf_b_v.long_name = "boundary conditions of mass fraction profile: b bins"  
+    return new_prof
+  
+  # Read in the file
+  adchem = hdf5storage.loadmat( fname_adchem )
+  
+  dmid = np.squeeze( adchem['dmid'] )
+  prof_z = np.squeeze( adchem['z'] )
+  
+  smonth = int( adchem['smonth'][0][0] )
+  emonth = int( adchem['emonth'][0][0] )
+  sday   = int( adchem['sday'][0][0] )
+  eday   = int( adchem['eday'][0][0] )
+  shour  = int( adchem['shour'][0][0] )
+  ehour  = int( adchem['ehour'][0][0] )
+  
+  # Select correct times:
+  adchem_timestring = np.arange( '{:04d}-{:02d}-{:02d}T{:02d}:00'.format( sim_year, smonth, sday, 
+                                                                          shour ),
+                                 '{:04d}-{:02d}-{:02d}T{:02d}:00'.format( sim_year, emonth, eday, 
+                                                                          ehour ),
+                                 dtype='datetime64[h]')
+  for t in range( len( time ) ):
+    for tt in range( len( adchem_timestring ) ):
+      if timestring[t] == adchem_timestring[tt]:
+        if ( timestring[t].hour + plusUTC ) == start_hour:  ### CHECK plusutc FROM PONTUS!!!
+          ss = tt
+        if ( timestring[t].hour + plusUTC ) == end_hour+1:  ### CHECK plusutc FROM PONTUS!!! 
+          ee = tt
+  
+  ncc = len( adchem['composition_name'][0] )
+  composition_index = np.linspace( 1, ncc, ncc ) 
+  composition_name = []
+  for cc in range ( ncc ):
+    composition_name.append('{:25}'.format( adchem['composition_name'][0][cc][0][0] ) )
+  max_string_length = np.linspace( 1, len( composition_name[0] ), len( composition_name[0] ) )
+  
+  # PALM grid:
+  
+  # PALM model extents:
+  lx_N03 = (nx_N03+1) * dx_N03
+  ly_N03 = (ny_N03+1) * dy_N03
+  
+  z_column = np.zeros( nz_N03+1, dtype=float )
+  z_column[0] = dz_N03 * 0.5
+  for k in range( 1, len(z_column), 1):
+    z_column[k] = z_column[k-1] + dz_N03
+  z_N03 = z_column[0:-1]
+    
+  x_N03 = np.linspace( 0.5*dx_N03, lx_N03 - 0.5*dx_N03, nx_N03+1)
+  y_N03 = np.linspace( 0.5*dy_N03, ly_N03 - 0.5*dy_N03, ny_N03+1)
+  
+  
+  # Save dimensions to the dynamic input file:
+  
+  dims = ['x','y','z','time','Dmid','composition_index','max_string_length']
+  arrays = [x_N03, y_N03, z_N03, time_palm, dmid, composition_index, max_string_length]
+  std_names = ['x coordinate of cell centers', 'y coordinate of cell centers', 
+               'z coordinate of cell centers', 'time', 'aerosol_geometric_mean_diameter','','']
+  units = ['m','m','m',
+           'seconds since {:04d}{:02d}{:02d} {}:00 UTC'.format( sim_year, sim_month, sim_day, 
+                                                                start_hour),
+           'm','']
+  types = ['f4','f4','f4','f4','f4','i4','i4']
+  
+  for d in range( len( dims ) ):
+    dsout_N03.createDimension( dims[d], len( arrays[d] ) )
+    v = dsout_N03.createVariable( dims[d], 'f4', ( dims[d],) )
+    v[:] = arrays[d]
+    v.standard_name = std_names[d]
+    if dims[d]=='time':
+      v.long_name = "time"
+      
+  # ----------------------------------------------------------------------------------------------#
+  # Initial profiles: 
+  
+  # aerosol chemical composition:      
+  init_adchem_mf_a = np.mean( adchem['mass_fracs'][ss:ee+11,:,:], axis=0)
+  init_mf_a = np.zeros( [ len( z_N03 ), ncc ], dtype=float  )
+  for c in range( ncc ):
+    init_mf_a[:,c] = integrate_profile( prof_z, init_adchem_mf_a[:,c], z_N03, init_mf_a[:,c] )
+  init_mf_b = 0.0 * init_mf_a
+  
+  # aerosol size distribution:
+  init_adchem_psd = np.mean( adchem['psd'][ss:ee+1,:,:], axis=0 )
+  nbins = np.shape( init_adchem_psd )[1]
+  init_psd = np.zeros( [ len( z_N03 ), nbins ], dtype=float  )
+  for b in range( nbins ):
+    init_psd[:,b] = integrate_profile( prof_z, init_adchem_psd[:,b], z_N03, init_psd[:,b] )
+  
+  # ----------------------------------------------------------------------------------------------#
+  # Forcing:
+    
+  ls_dims = [ y_N03, y_N03, x_N03, x_N03]
+  
+  # aerosol chemical composition:  
+  lsf_adchem_mf_a = adchem['mass_fracs'][ss:ee+1,:,:]
+  if avg_bg:
+    avgi = np.nanmean( lsf_adchem_mf_a, axis=0 )
+    for t in range( np.shape( lsf_adchem_mf_a )[0] ):
+      lsf_adchem_mf_a[t,:,:] = avgi
+  lsf_mf_a = np.zeros( [ ee-ss+1, len( z_N03 ), ncc ], dtype=float  )
+  for t in range( ee-ss+1 ):
+    for c in range( ncc ):
+      lsf_mf_a[t,:,c] = integrate_profile( prof_z, lsf_adchem_mf_a[t,:,c], z_N03, lsf_mf_a[t,:,c] )
+  lsf_mf_b = 0.0 * lsf_mf_a
+  
+  # aerosol size distribution:
+  lsf_adchem_psd = adchem['psd'][ss:ee+1,:,:]
+  if avg_bg:
+    avgi = np.nanmean( lsf_adchem_psd, axis=0 )
+    for t in range( np.shape( lsf_adchem_psd )[0] ):
+      lsf_adchem_psd[t,:,:] = avgi
+  lsf_psd = np.zeros( [ ee-ss+1, len( z_N03 ), nbins ], dtype=float  )
+  for t in range( ee-ss+1 ):
+    for b in range( nbins ):
+      lsf_psd[t,:,b] = integrate_profile( prof_z, lsf_adchem_psd[t,:,b], z_N03, lsf_psd[t,:,b] )
+  
+  # ----------------------------------------------------------------------------------------------#
+  # SAVE VARIABLES TO PIDS_DYNAMIC:
+  
+  # namelist of chemical components:
+  cn = dsout_N03.createVariable( 'composition_name', 'S1', ('composition_index','max_string_length',) )
+  cn[:] = list( map( lambda x : list(x), composition_name ) )
+  cn.long_name = 'aerosol composition name'
+  cn.standard_name = 'composition_name' 
 
-                            
-# aerosol size distribution                                           
-init_psdv = createNetcdfVariable( dsout_N03, init_psd, 'init_atmosphere_aerosol', 0, '#/m3', 
-                                  'f4', ('z','Dmid',), variable, fill_value=-9999.0 )   
-init_psdv.long_name = 'initial vertical profile of aerosol concentration' 
-init_psdv.lod = 1
+  # aerosol chemical composition:
+  init_mf_a_v = createNetcdfVariable( dsout_N03, init_mf_a, 'init_atmosphere_mass_fracs_a', 0,  
+                                      '', 'f4', ('z','composition_index',), variable, 
+                                      fill_value=-9999.0 )
+  init_mf_a_v.long_name = "initial mass fraction profile: a bins" 
 
-nvi = 0
-for nv in ls_names:
-  dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi]), nbins ] )
-  for i in range( len( ls_dims[nvi] ) ):
-    dummy[:,:,i,:] = lsf_psd
-  namev = 'ls_forcing_{}_aerosol'.format( nv )
+  init_mf_b_v = createNetcdfVariable( dsout_N03, init_mf_b, 'init_atmosphere_mass_fracs_b', 0, 
+                                      '', 'f4', ('z','composition_index',), variable, 
+                                      fill_value=-9999.0 )
+  init_mf_b_v.long_name = "initial mass fraction profile: b bins"
+  
+  # forcing for aerosol chemical composition:
+  nvi = 0
+  for nv in ls_names:
+    dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi]), len(composition_index) ] )
+    for i in range( len( ls_dims[nvi] ) ):
+      dummy[:,:,i,:] = lsf_mf_a
+    namev = 'ls_forcing_{}_mass_fracs_a'.format(nv)
+    lsf_mf_a_v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '', 'f4', 
+                                       ('time','z',ls_dimsname[nvi], 'composition_index',), 
+                                       variable, fill_value=-9999.0 )
+    lsf_mf_a_v.long_name = "boundary conditions of mass fraction profile: a bins" 
+        
+    namev = 'ls_forcing_{}_mass_fracs_b'.format(nv)
+    lsf_mf_b_v = createNetcdfVariable( dsout_N03, dummy*0, namev, 0, '', 'f4', 
+                                       ('time','z',ls_dimsname[nvi],'composition_index',), 
+                                       variable, fill_value=-9999.0  )
+    lsf_mf_b_v.long_name = "boundary conditions of mass fraction profile: b bins"  
+    
+    nvi += 1
+  
+  dummy = np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ), len(composition_index) ] )
+  for j in range( len( y_N03 ) ):
+    for i in range( len( x_N03 ) ):
+      dummy[:,j,i,:] = lsf_mf_a[:,-1,:]
+  namev = 'ls_forcing_top_mass_fracs_a'
+  lsf_mf_a_v = createNetcdfVariable( dsout_N03, dummy, namev, 0, '', 'f4', 
+                                    ('time','y','x','composition_index',), 
+                                    variable, fill_value=-9999.0 )
+  lsf_mf_a_v.long_name = "boundary conditions of mass fraction profile: a bins" 
+
+  namev = 'ls_forcing_top_mass_fracs_b'
+  lsf_mf_b_v = createNetcdfVariable( dsout_N03, dummy*0, namev, 0, '', 'f4', 
+                                    ('time','y','x','composition_index',), 
+                                    variable, fill_value=-9999.0  )
+  lsf_mf_b_v.long_name = "boundary conditions of mass fraction profile: b bins"  
+
+  # aerosol size distribution
+  init_psdv = createNetcdfVariable( dsout_N03, init_psd, 'init_atmosphere_aerosol', 0, '#/m3', 
+                                    'f4', ('z','Dmid',), variable, fill_value=-9999.0 )
+  init_psdv.long_name = 'initial vertical profile of aerosol concentration' 
+  init_psdv.lod = 1
+  
+  nvi = 0
+  for nv in ls_names:
+    dummy = np.zeros( [ ee-ss+1, len(z_N03), len(ls_dims[nvi]), nbins ] )
+    for i in range( len( ls_dims[nvi] ) ):
+      dummy[:,:,i,:] = lsf_psd
+    namev = 'ls_forcing_{}_aerosol'.format( nv )
+    lsf_psdv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '', 'f4', 
+                                     ('time','z',ls_dimsname[nvi],'Dmid',), 
+                                     variable, fill_value=-9999.0 )   
+    lsf_psdv.long_name = 'boundary condition of aerosol concentration' 
+    lsf_psdv.lod = 1
+    nvi += 1
+    
+  dummy =  np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ), nbins ], dtype=float ) 
+  for j in range( len( y_N03 ) ):
+    for i in range( len( x_N03 ) ):
+      dummy[:,j,i,:] = lsf_psd[:,-1,:]
+  namev = 'ls_forcing_top_aerosol'
   lsf_psdv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '', 'f4', 
-                                   ('time','z',ls_dimsname[nvi],'Dmid',), 
-                                   variable, fill_value=-9999.0 )   
+                                   ('time','y','x','Dmid',), variable, fill_value=-9999.0 )
   lsf_psdv.long_name = 'boundary condition of aerosol concentration' 
   lsf_psdv.lod = 1
-  nvi += 1
   
-dummy =  np.zeros( [ ee-ss+1, len( y_N03 ), len( x_N03 ), nbins ], dtype=float ) 
-for j in range( len( y_N03 ) ):
-  for i in range( len( x_N03 ) ):
-    dummy[:,j,i,:] = lsf_psd[:,-1,:]
-namev = 'ls_forcing_top_aerosol'
-lsf_psdv = createNetcdfVariable( dsout_N03, dummy, namev, 0, '', 'f4', 
-                                 ('time','y','x','Dmid',), variable, fill_value=-9999.0 )   
-lsf_psdv.long_name = 'boundary condition of aerosol concentration' 
-lsf_psdv.lod = 1
+  
+  # PRINT INITIAL GAS CONCENTRATIONS
+  gas_names = ['NO','NO2','O3','OH','RH','RO2','RCHO','HO2','H2SO4','HNO3','NH3','OCNV','OCSV']
+  zi = adchem['z']<150
+  z_to_print = adchem['z'][zi]
+  
+  gases_out = open( fname_gases, 'w+' )
+  nline = '    cs_name                    ='
+  sline = '    cs_surface                 ='
+  pline0 = '    cs_profile'
+  zline0 = '    cs_heights'
+  
+  # Names and cs_surface
+  for ig in range( len( gas_names ) ):
+    stri = "'{}'".format( gas_names[ig] )
+    nline += "{:>9},".format( stri )
+    sline += " {:3.2e},".format( np.nanmean( adchem[gas_names[ig]][ss:ee+1,zi[0]], axis=0 )[0] )
+  gases_out.write( nline+'\n' )
+  gases_out.write( sline+'\n' )
 
-
-# PRINT INITIAL GAS CONCENTRATIONS
-gas_names = ['NO','NO2','O3','OH','RH','RO2','RCHO','HO2','H2SO4','HNO3','NH3','OCNV','OCSV']
-zi = adchem['z']<150
-print('z = ', adchem['z'][zi] )
-for ig in range( len( gas_names ) ):
-  avgi = np.nanmean( adchem[gas_names[ig]][ss:ee+1,zi[0]], axis=0 )
-  print( '{} (ppm)'.format( gas_names[ig]) )  
-  print(np.array2string(avgi, formatter={'float_kind':'{0:1.2e}, '.format}))
-  print('')
+  # cs_profile
+  for ig in range( len( gas_names ) ):
+    stri = "({},:)".format( ig+1 )
+    pline = pline0 + "{:17}".format( stri )
+    pline += '='
+    for k in range( len( z_to_print )+1 ):
+      if k==0:
+        pline += "  {:3.2e},".format( np.nanmean( adchem[gas_names[ig]][ss:ee+1,zi[0]], 
+                                                  axis=0 )[0] )
+      else:
+        pline += "  {:3.2e},".format( np.nanmean( adchem[gas_names[ig]][ss:ee+1,zi[0]], 
+                                                  axis=0 )[k-1] )
+    pline += '  ! {}'.format( gas_names[ig] )
+    gases_out.write( pline+'\n' ) 
+  
+  # cs_heights
+  for ig in range( len( gas_names ) ):
+    stri = "({},:)".format( ig+1 )
+    zline = zline0 + "{:17}".format( stri )
+    zline += '='
+    for k in range( len( z_to_print )+1 ):
+      if k==0:
+        zline += "  {:8.1f},".format( 0.0 )
+      else:
+        zline += "  {:8.1f},".format( z_to_print[k-1] )
+    zline += '  ! {}'.format( gas_names[ig] )
+    gases_out.write( zline+'\n' )
+  gases_out.close()  
 
 
 #%% Close files
 
 dsout.close()
-dsout_N03.close()
+if not precursor:
+  dsout_N03.close()
