@@ -35,8 +35,7 @@
 !
 !-- Initialization
 !------------------------------------------------------------------------------
-    initializing_actions = 'set_constant_profiles',   !'set_constant_profiles', or 'inifor', 
-                                                      ! or both (met. from inifor, chem constant profiles)
+    initializing_actions = 'set_constant_profiles',
 
     origin_date_time     = '2017-06-09 07:00:00 +03',
 
@@ -82,7 +81,7 @@
 !
 !-- Run-control/timeseries output settings
 !------------------------------------------------------------------------------
-    dt_run_control        =   1.0,
+    dt_run_control        =  1.0,
     dt_dots               =  5.0,
 
 !
@@ -302,7 +301,7 @@
 !------------------------------------------------------------------------------
  &plant_canopy_parameters
  
-    canopy_mode = 'read_from_file_3d',
+    canopy_mode = 'read_from_file',
     canopy_drag_coeff = 0.3,
     
  / ! end of plant_canopy_parameters namelist
@@ -321,42 +320,40 @@
     photolysis_scheme          = 'simple',
 !
 !-- Chemical species
-!                                     1        2        3        4        5        6        7
-    cs_name                    =    'NO',   'NO2',    'O3',    'OH',    'RH',   'RO2',  'RCHO',
-!                                     8        9       10       11       12       13 
-                                   'HO2', 'H2SO4',  'HNO3',   'NH3',  'OCNV',  'OCSV',
-    cs_surface                 = 2.07e-2, 3.07e-2, 7.18e-3, 2.58e-9, 4.49e-2, 1.84e-8, 1.42e-2,
-                                 1.89e-8, 5.25e-8, 1.78e-4, 1.51e-3, 1.05e-6, 2.45e-5, ! in ppm
+    cs_name                    =     'NO',    'NO2',     'O3',     'OH',     'RH',    'RO2',   'RCHO',
+                                    'HO2',  'H2SO4',   'HNO3',    'NH3',   'OCNV',   'OCSV',
+    cs_surface                 = 2.07e-02, 3.07e-02, 7.18e-03, 2.58e-09, 4.49e-02, 1.84e-08, 1.43e-02, 
+                                 1.89e-08, 5.25e-08, 1.78e-04, 1.51e-03, 1.05e-06, 2.45e-05,        ! in ppm
 
 !-- Initial profiles (also for lateral boundaries if 'set_constant_profiles' is chosen) in ppm
 
-    cs_profile(1,:)            =  2.07e-2,  2.07e-2,  1.20e-2,  7.78e-3,  3.61e-3,  4.39e-4,  ! NO
-    cs_profile(2,:)            =  3.07e-2,  3.07e-2,  1.64e-2,  8.95e-3,  6.02e-3,  8.54e-4,  ! NO2
-    cs_profile(3,:)            =  7.18e-3,  7.18e-3,  7.67e-3,  8.30e-3,  1.34e-2,  3.29e-2,  ! O3
-    cs_profile(4,:)            =  2.58e-9,  2.58e-9,  4.60e-9,  8.77e-9,  2.13e-8,  6.53e-8,  ! OH
-    cs_profile(5,:)            =  4.49e-2,  4.49e-2,  2.52e-2,  1.45e-2,  1.55e-3,  2.56e-4,  ! RH
-    cs_profile(6,:)            =  1.84e-8,  1.84e-8,  3.29e-8,  6.25e-8,  8.69e-8,  2.49e-6,  ! RO2
-    cs_profile(7,:)            =  1.43e-2,  1.43e-2,  1.13e-2,  9.77e-3,  7.91e-3,  7.69e-3,  ! RCHO
-    cs_profile(8,:)            =  1.89e-8,  1.89e-8,  3.50e-8,  6.95e-8,  1.40e-7,  3.49e-6,  ! HO2
-    cs_profile(9,:)            =  5.25e-8,  5.25e-8,  4.63e-8,  4.55e-8,  1.86e-7,  9.23e-9,  ! H2SO4
-    cs_profile(10,:)           =  1.78e-4,  1.78e-4,  1.62e-4,  1.79e-4,  6.03e-4,  7.22e-4,  ! HNO3
-    cs_profile(11,:)           =  1.51e-3,  1.51e-3,  5.98e-4,  1.98e-4,  9.91e-6,  5.88e-5,  ! NH3
-    cs_profile(12,:)           =  1.05e-6,  1.05e-6,  1.37e-6,  1.65e-6,  3.67e-6,  8.13e-6,  ! OCNV
-    cs_profile(13,:)           =  2.45e-5,  2.45e-5,  2.51e-5,  2.61e-5,  4.75e-5,  1.38e-4,  ! OCSV
+    cs_profile(1,:)            =  2.07e-02,  2.07e-02,  1.20e-02,  7.78e-03,  3.61e-03,  4.39e-04,  ! NO
+    cs_profile(2,:)            =  3.07e-02,  3.07e-02,  1.64e-02,  8.95e-03,  6.02e-03,  8.54e-04,  ! NO2
+    cs_profile(3,:)            =  7.18e-03,  7.18e-03,  7.67e-03,  8.30e-03,  1.34e-02,  3.29e-02,  ! O3
+    cs_profile(4,:)            =  2.58e-09,  2.58e-09,  4.60e-09,  8.77e-09,  2.13e-08,  6.53e-08,  ! OH
+    cs_profile(5,:)            =  4.49e-02,  4.49e-02,  2.52e-02,  1.45e-02,  1.55e-03,  2.56e-04,  ! RH
+    cs_profile(6,:)            =  1.84e-08,  1.84e-08,  3.29e-08,  6.25e-08,  8.69e-08,  2.49e-06,  ! RO2
+    cs_profile(7,:)            =  1.43e-02,  1.43e-02,  1.13e-02,  9.77e-03,  7.91e-03,  7.69e-03,  ! RCHO
+    cs_profile(8,:)            =  1.89e-08,  1.89e-08,  3.50e-08,  6.95e-08,  1.40e-07,  3.49e-06,  ! HO2
+    cs_profile(9,:)            =  5.25e-08,  5.25e-08,  4.63e-08,  4.55e-08,  1.86e-07,  9.23e-09,  ! H2SO4
+    cs_profile(10,:)           =  1.78e-04,  1.78e-04,  1.62e-04,  1.79e-04,  6.03e-04,  7.22e-04,  ! HNO3
+    cs_profile(11,:)           =  1.51e-03,  1.51e-03,  5.98e-04,  1.98e-04,  9.91e-06,  5.88e-05,  ! NH3
+    cs_profile(12,:)           =  1.05e-06,  1.05e-06,  1.37e-06,  1.65e-06,  3.67e-06,  8.13e-06,  ! OCNV
+    cs_profile(13,:)           =  2.45e-05,  2.45e-05,  2.51e-05,  2.61e-05,  4.75e-05,  1.38e-04,  ! OCSV
 
-    cs_heights(1,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! NO
-    cs_heights(2,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! NO2
-    cs_heights(3,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! O3
-    cs_heights(4,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! OH
-    cs_heights(5,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! RH
-    cs_heights(6,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! RO2
-    cs_heights(7,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! RCHO
-    cs_heights(8,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! HO2
-    cs_heights(9,:)            =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! H2SO4
-    cs_heights(10,:)           =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! HNO3
-    cs_heights(11,:)           =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! NH3
-    cs_heights(12,:)           =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! OCNV
-    cs_heights(13,:)           =  0.0,   5.0,   20.0,   45.0,  80.0, 125.0, ! OCSV
+    cs_heights(1,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! NO
+    cs_heights(2,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! NO2
+    cs_heights(3,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! O3
+    cs_heights(4,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! OH
+    cs_heights(5,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! RH
+    cs_heights(6,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! RO2
+    cs_heights(7,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! RCHO
+    cs_heights(8,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! HO2
+    cs_heights(9,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! H2SO4
+    cs_heights(10,:)           =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! HNO3
+    cs_heights(11,:)           =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! NH3
+    cs_heights(12,:)           =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! OCNV
+    cs_heights(13,:)           =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! OCSV
 
 !
 !-- Emissions:   
@@ -402,8 +399,8 @@
 
 !
 !-- Sectional presentation of the particle size distribution
-    reglim                     = 2.5E-9, 1.0E-8, 2.5E-6, ! limits of the subranges (m)
-    nbin                       = 2, 8,                   ! number of bins per subrange 
+    reglim                     = 2.5E-9, 1.5E-8, 1.0E-6, ! limits of the subranges (m)
+    nbin                       = 3, 7,                   ! number of bins per subrange 
 !-- NOTE! Subrange 1 consists only of H2SO4 and/or OC
     nf2a                       = 1.0,	                 ! Number fraction of subrange 2a
 
