@@ -6,27 +6,29 @@ import os
 import pandas as pd
 from scipy.ndimage import binary_erosion, binary_dilation
 from pylab import cm
-from psdLib import psd_from_data, define_bins
+from psdLib import define_bins, interpolate_psd_from_figure, ntot_from_psd_and_pm
 import netCDF4 as nc
 
 plt.close('all')
 
 folder = '/home/monakurp/makelankatu_simulations'
 year = 2017
-month = 6
-day = 9
+month = 12
+day = 7
 tod  = 'morning'
 
 # Aerosol size distribution:
 nbins = 10  # number of size bins applied in SALSA
-nbin = [2, 8]  # number of bins per subrange
-reglim = [2.5e-9, 10.0e-9, 2.5e-6]  # subrange diameter limits
+nbin = [3, 7]  # number of bins per subrange
+reglim = [2.5e-9, 15.0e-9, 1.0e-6]  # subrange diameter limits
 
 fill_value = np.nan#-9999
 
-hourly = False # calculate hourly emissions (if False, calculate every 15 minutes)
+hourly = True # calculate hourly emissions (if False, calculate every 15 minutes)
 biobus = False # assume that all busses use bioful (like HSL buses)
 PM_HSY = False # use emission data provided by Anu Kousa from HSY
+hietikko = True # use Hietikko et al. to define the number emission instead EEA data
+VTT = False # use VTT fuel consumption data instead of EEA
 
 # coordinates of the HSY supersite
 #easting_HSY  = 25497337.38
@@ -39,7 +41,7 @@ PM_HSY = False # use emission data provided by Anu Kousa from HSY
 date = '{}{:02d}{:02d}'.format(year,month,day)
 
 if ( date=='20170609' and tod=='morning' ):
-  start_hour = 6
+  start_hour = 7
   start_min  = 0
   end_hour   = 9
   end_min    = 15
@@ -89,20 +91,10 @@ file_child_lanes_and_buildings = 'input_data_to_palm/lanes_child.npz'
 file_child_st                  = 'input_data_to_palm/street_types_child.npz'
 file_child_oro                 = 'input_data_to_palm/oro_child.npz'
 
-if hourly:
-  suffix = ''
-else:
+if not hourly:
   suffix = '_15min'
-
-if PM_HSY:
-  HSY_or_not = '_HSY'
 else:
-  HSY_or_not = ''
-  
-if biobus:
-  biobus_or_not = '_biobus'
-else:
-  biobus_or_not = ''
+  suffix = ''
 
 file_emissions = 'source_data/EEA_calculated_EF{}.csv'.format( suffix )
 file_psd_shape = 'source_data/hietikko2018_fig7.csv'
@@ -110,7 +102,23 @@ file_HDD = 'source_data/HDD_Kaisaniemi.csv'
 file_emissions_HSY = 'source_data/HSY/emissions_PM_makelankatu_2017.xlsx'
 
 pids_folder = 'input_data_to_palm/cases/{}_{}'.format( date, tod )
-pids_salsa_out = '{}/PIDS_SALSA_N03{}{}{}'.format( pids_folder, suffix, HSY_or_not, biobus_or_not )
+pids_salsa_out = '{}/PIDS_SALSA_N03'.format( pids_folder )
+if not hourly:
+  pids_salsa_out += '_15min'
+if PM_HSY:
+  pids_salsa_out += '_HSY'
+  if biobus:
+    pids_salsa_out += '_biobus' 
+else:
+  if not hietikko:
+    pids_salsa_out += '_EEA'
+if hietikko:
+  pids_salsa_out += '_hietikko'
+  if VTT:
+    pids_salsa_out += '_VTT'
+  else:
+    pids_salsa_out += '_EEA'
+  
 pids_chem_out = '{}/PIDS_CHEM_N03{}'.format( pids_folder, suffix )
 
 #%% Read in input files
@@ -324,25 +332,35 @@ if PM_HSY:
   EF = EF / 1000.0 / TR_HSY
 else:
   EF = np.array( emission[' PM'] )  
-  
+
+do_plot = True
+
+# Size distribution for Hietikko et al. 
+_, rpb_hietikko = interpolate_psd_from_figure( file_psd_shape, bin_limits, do_plot )
+
 for t in range( len( emission ) ): # time
   
   for i in range( len( st_traffic_relative ) ): # street type
     TR = tr[t,i]  # veh/s
     is_street = ( st_map==st_index[i] )
     
-    if t==0 and i==0:
-      do_plot = True
+    if hietikko:
+      # Hietikko et al. based on the fuel consumption
+      if VTT:
+        ntot = np.array( emission[' FC_VTT'] )[t] * 4.22E15 * 1e-3
+      else:
+        ntot = np.array( emission[' FC_EEA'] )[t] * 4.22E15 * 1e-3
     else:
-      do_plot = False
-  
-    bin_limits, _, EF_bin = psd_from_data( file_psd_shape, EF[t], bin_limits, 'mass', do_plot )
-    aerosol_emission_values[t,is_street,:] = np.sum( EF_bin ) * TR * 1./st_width[i] * factor
-    heat_traffic[t,is_street] = np.array( emission[' E (heat from traffic)'] )[t] * TR * \
-                                1./st_width[i] * factor # J/(m*veh) * veh/s * 1/m = J/m2s = W/m2
+      # Mass emission (PM2.5) to number
+      ntot = ntot_from_psd_and_pm( EF[t], rpb_hietikko, dmid )
+    
+    aerosol_emission_values[t,is_street,:] = ntot * TR / st_width[i] * factor
+    heat_traffic[t,is_street] = np.array( emission[' E (J/m)'] )[t] * TR / st_width[i] \
+                                * factor # J/(m*veh) * veh/s * 1/m = J/m2s = W/m2
+    do_plot = False                             
 
 number_fracs = np.zeros([ len( ncat ), nbins ])
-number_fracs[0,:] += EF_bin / np.sum( EF_bin )
+number_fracs[0,:] += rpb_hietikko
 
 emission_mass_fracs = np.zeros( [len( ncat ), ncc], dtype = float )
 emission_mass_fracs[0,0] = np.mean( emission[' BC'] / emission[' PM'] )
@@ -498,6 +516,9 @@ aev.lod = 2
 pids_salsa.close()
 pids_chem.close()
 pids_static.close()
+
+print('Saved {} successfully!'. format( pids_salsa_out ) )
+print('Saved {} successfully!'. format( pids_chem_out ) )
 
 #%% Save into a file: anthropogenic heat
   
