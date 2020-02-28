@@ -1,0 +1,156 @@
+!-------------------------------------------------------------------------------
+!-- INITIALIZATION PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/inipar
+!-------------------------------------------------------------------------------
+ &initialization_parameters
+
+!
+!-- Grid
+!------------------------------------------------------------------------------
+    nx                   = 767,
+    ny                   = 767,
+    nz                   =  80,
+
+    dx                   = 9.0,
+    dy                   = 9.0,
+    dz                   = 6.0,  ! was 9.0
+
+    dz_stretch_level     = 300.0,
+    dz_stretch_factor    =  1.03, ! was 1.04
+    dz_max               =  18.0,
+ 
+!
+!-- Numerics
+!------------------------------------------------------------------------------
+    psolver              = 'multigrid',
+    mg_cycles            = 4,            ! no. of cycles in the multigrid scheme
+    ngsrb                = 2,            ! no. of Gauss-Seidel iterations
+    momentum_advec       = 'ws-scheme', 
+    scalar_advec         = 'ws-scheme', 
+    conserve_volume_flow = .F.,
+
+!
+!-- Mode
+!------------------------------------------------------------------------------     
+    humidity             = .T.,
+    q_surface            = 0.007, !0.001
+
+!
+!-- Initialization
+!------------------------------------------------------------------------------
+    initializing_actions = 'inifor',   !'set_constant_profiles', or 'inifor', 
+                                       ! or both (met. from inifor, chem constant profiles)
+
+
+    origin_date_time     = '2017-06-09 06:00:00 +03',
+
+
+!
+!-- Topography
+!------------------------------------------------------------------------------    
+    topography           = 'read_from_file',
+
+!
+!-- Physics
+!------------------------------------------------------------------------------
+    longitude            = 24.94,
+    latitude             = 60.19,
+
+ / ! end of initialization_parameters namelist
+
+
+!-------------------------------------------------------------------------------
+!-- RUNTIME PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/d3par
+!-------------------------------------------------------------------------------
+ &runtime_parameters
+
+!
+!-- Run steering
+!------------------------------------------------------------------------------
+    end_time              = 3600.0, ! 3600s (precursor) + 2*3600s + 15*60s (run)
+    create_disturbances   = .T.,
+    netcdf_data_format    = 4,
+
+!
+!-- Run-control/timeseries output settings
+!------------------------------------------------------------------------------
+    dt_run_control        =  1.0,
+    dt_dots               =  5.0,
+
+!
+!-- Profile output settings
+!------------------------------------------------------------------------------
+    skip_time_dopr        =   0.0,
+    dt_dopr               = 900.0,
+    averaging_interval_pr = 900.0,
+    dt_averaging_input_pr =   1.0,
+
+    data_output_pr        = 'u',  'u*2',  'wu',  'w*u*',  'w"u"',
+                            'v',  'v*2',  'wv',  'w*v*',  'w"v"',
+                            'w',  'w*2',
+                            'theta', 'theta*2', 'wtheta', 'w*theta*', 'w"theta"',
+                            'q',  'q*2',
+                            'e', 'e*', 
+!
+!-- 2D/3D output settings
+!------------------------------------------------------------------------------
+    do3d_at_begin      = .F., 
+    do2d_at_begin      = .F.,
+
+    dt_data_output     = 300.0,
+    dt_data_output_av  = 900.0, 
+    averaging_interval = 900.0,
+    dt_averaging_input =   1.0,
+
+
+    section_xy         = 3, 7, 10, 13, 17, 25, 33, 42, 
+    section_yz	       = 384, 
+    section_xz         = 384,
+
+    data_output = 'u_xy_av', 'u_xz_av', 'u_yz_av',
+                  'v_xy_av', 'v_xz_av', 'v_yz_av',
+                  'w_xy_av', 'w_xz_av', 'w_yz_av',
+                  'theta_xy_av', 'theta_xz_av', 'theta_yz_av',
+                  'q_xy_av', 'q_xz_av', 'q_yz_av',
+                  'e_xy_av', 'e_xz_av', 'e_yz_av',
+                  'p_xy_av', 'p_xz_av', 'p_yz_av',
+
+
+                  
+ / ! end of runtime_parameters namelist
+
+
+!------------------------------------------------------------------------------
+!-- PLANT CANOPY MODEL PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/canpar
+!------------------------------------------------------------------------------
+ &plant_canopy_parameters
+
+    canopy_mode = 'read_from_file_3d',
+    canopy_drag_coeff = 0.3,
+
+ / ! end of plant_canopy_parameters namelist
+
+!------------------------------------------------------------------------------  
+!-- SYNTHETIC TURBULENCE GENERATOR PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/stg_par
+!------------------------------------------------------------------------------ 
+ &stg_par
+
+    use_syn_turb_gen =   .T., 
+    dt_stg_adjust    =   5.0, 
+    dt_stg_call      = 300.0,
+
+ / ! end of stg_par namelist
+
+
+!------------------------------------------------------------------------------  
+!-- OFFLINE NESTING PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/nestofflpar
+!------------------------------------------------------------------------------      
+ &nesting_offl_parameters
+
+    nesting_offline = .T., 
+
+ / ! end of nesting_offl_parameters namelist
