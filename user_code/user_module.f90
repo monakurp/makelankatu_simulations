@@ -1164,7 +1164,7 @@
 !                      ( 0.5_wp * ( v(k,j,i) + v(k,j+1,i) ) - hom(k,1,2,sr) )  &
 !                                     * rmask(j,i,sr)                          &
 !                                     * MERGE( 1.0_wp, 0.0_wp,                 &
-!                                              BTEST( wall_flags_0(k,j,i), 0 ) )
+!                                              BTEST( wall_flags_total_0(k,j,i), 0 ) )
 !!
 !!--             Further profiles can be defined and calculated by increasing
 !!--             the second index of array sums_l (replace ... appropriately)

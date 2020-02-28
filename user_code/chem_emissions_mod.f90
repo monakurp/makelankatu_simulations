@@ -21,13 +21,38 @@
 !
 ! Current revisions:
 ! ------------------
-! 
+!
 ! 
 ! Former revisions:
 ! -----------------
-! $Id: chem_emissions_mod.f90 4356 2019-12-20 17:09:33Z suehring $
+! $Id: chem_emissions_mod.f90 4403 2020-02-12 13:08:46Z banzhafs $
+! Implemented on-demand read mode for LOD 2 (ECC)
+!  - added following module global variables
+!    - input_file_chem (namesake in netcdf_data_input_mod is local)
+!    - timestamps
+!  - added following public subroutines / interfaces
+!    - chem_emisisons_header_init
+!    - chem_emisisons_update_on_demand
+!  - added following local subroutines
+!    - chem_emisisons_header_init_lod2
+!    - chem_emisisons_update_on_demand_lod2
+!  - added following local auxiliary subroutines
+!    - chem_emissions_init_species ( )
+!    - chem_emissions_init_timestamps ( )
+!    - chem_emissions_assign_surface_flux ( )
+!  - added following local functions
+!    - chem_emisisons_convert_base_units ( )
+!    - chem_emissions_mass_2_molar_flux ( )
+!    - chem_emissions_locate_species ( )
+!    - chem_emissions_locate_timestep ( )
+!  - added following error messages
+!    - CM0468 - LOD mismatch (namelist / chemistry file)
+!    - CM0469 - Timestamps no in choronological order
+!  - depreciated unused module variable filename_emis
+!
+! 4356 2019-12-20 17:09:33Z suehring
 ! Minor formatting adjustment
-! 
+!
 ! 4242 2019-09-27 12:59:10Z suehring
 ! Adjust index_hh access to new definition accompanied with new 
 ! palm_date_time_mod. Note, this is just a preleminary fix. (E Chan)
@@ -139,26 +164,42 @@
     USE statistics,                                                          &   
         ONLY:  weight_pres
 
-    
+!
+!-- 20200203 (ECC)
+!-- Added new palm_date_time_mod for on-demand emission reading
+
+    USE palm_date_time_mod,                                                  &
+        ONLY:  get_date_time
+
     IMPLICIT NONE
 
 !
 !-- Declare all global variables within the module 
-    
-    CHARACTER (LEN=80) ::  filename_emis             !< Variable for the name of the netcdf input file
 
-    INTEGER(iwp) ::  dt_emis                         !< Time Step Emissions 
-    INTEGER(iwp) ::  i                               !< index 1st selected dimension (some dims are not spatial)
-    INTEGER(iwp) ::  j                               !< index 2nd selected dimension 
-    INTEGER(iwp) ::  i_start                         !< Index to start read variable from netcdf along one dims
-    INTEGER(iwp) ::  i_end                           !< Index to end read variable from netcdf in one dims
-    INTEGER(iwp) ::  j_start                         !< Index to start read variable from netcdf in additional dims
-    INTEGER(iwp) ::  j_end                           !< Index to end read variable from netcdf in additional dims
-    INTEGER(iwp) ::  len_index                       !< length of index (used for several indices)
-    INTEGER(iwp) ::  len_index_pm                    !< length of PMs index
-    INTEGER(iwp) ::  len_index_voc                   !< length of voc index
-    INTEGER(iwp) ::  z_start                         !< Index to start read variable from netcdf in additional dims
-    INTEGER(iwp) ::  z_end                           !< Index to end read variable from netcdf in additional dims
+!
+!-- 20200203 (ECC) - variable unused
+!    CHARACTER (LEN=80) ::  filename_emis             !< Variable for the name of the netcdf input file
+
+!
+!-- 20200203 (ECC) new variables for on-demand read mode
+
+    CHARACTER(LEN=512), ALLOCATABLE, DIMENSION(:) :: timestamps   !< timestamps in chemistry file
+    
+    CHARACTER(LEN=*),   PARAMETER   :: input_file_chem = 'PIDS_CHEM' !< chemistry file
+
+    INTEGER(iwp) ::  dt_emis         !< Time Step Emissions 
+    INTEGER(iwp) ::  i               !< index 1st selected dimension (some dims are not spatial)
+    INTEGER(iwp) ::  j               !< index 2nd selected dimension 
+    INTEGER(iwp) ::  i_start         !< Index to start read variable from netcdf along one dims
+    INTEGER(iwp) ::  i_end           !< Index to end read variable from netcdf in one dims
+    INTEGER(iwp) ::  j_start         !< Index to start read variable from netcdf in additional dims
+    INTEGER(iwp) ::  j_end           !< Index to end read variable from netcdf in additional dims
+    INTEGER(iwp) ::  len_index       !< length of index (used for several indices)
+    INTEGER(iwp) ::  len_index_pm    !< length of PMs index
+    INTEGER(iwp) ::  len_index_voc   !< length of voc index
+    INTEGER(iwp) ::  previous_timestamp_index !< index for current timestamp (20200203 ECC)
+    INTEGER(iwp) ::  z_start         !< Index to start read variable from netcdf in additional dims
+    INTEGER(iwp) ::  z_end           !< Index to end read variable from netcdf in additional dims
 
     REAL(wp) ::  conversion_factor                   !< Units Conversion Factor
 
@@ -184,8 +225,28 @@
     INTERFACE chem_emissions_setup
        MODULE PROCEDURE chem_emissions_setup
     END INTERFACE chem_emissions_setup
-    
-    PUBLIC chem_emissions_init, chem_emissions_match, chem_emissions_setup
+
+!
+!-- 20200203 (ECC) new interfaces for on-demand mode
+
+!
+!-- initialization actions for on-demand mode 
+    INTERFACE chem_emissions_header_init
+       MODULE PROCEDURE chem_emissions_header_init
+    END INTERFACE chem_emissions_header_init
+!
+!-- load emission data for on-demand mode
+    INTERFACE chem_emissions_update_on_demand
+       MODULE PROCEDURE chem_emissions_update_on_demand
+    END INTERFACE chem_emissions_update_on_demand
+
+!
+!-- 20200203 (ECC) update public routines
+
+!    PUBLIC chem_emissions_init, chem_emissions_match, chem_emissions_setup
+
+    PUBLIC chem_emissions_init, chem_emissions_match, chem_emissions_setup,    &
+           chem_emissions_header_init, chem_emissions_update_on_demand
 !
 !-- Public Variables
     PUBLIC conversion_factor, len_index, len_index_pm, len_index_voc
@@ -1699,6 +1760,7 @@ SUBROUTINE chem_emissions_match( emt_att,len_index )
 !
 !-- LSM surfaces
 
+
              DO  m = 1, surf_lsm_h%ns
 
                 i = surf_lsm_h%i(m)
@@ -1751,6 +1813,8 @@ SUBROUTINE chem_emissions_match( emt_att,len_index )
 
              ENDDO  ! m
 
+
+
 !
 !-- USM surfaces
 
@@ -1802,7 +1866,7 @@ SUBROUTINE chem_emissions_match( emt_att,len_index )
                    ENDIF  ! PM
 
                 ENDIF  ! emis_distribution
- 
+
              ENDDO  ! m
 
           ENDDO
@@ -1817,5 +1881,833 @@ SUBROUTINE chem_emissions_match( emt_att,len_index )
    ENDIF
 
  END SUBROUTINE chem_emissions_setup
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!
+!! 20200203 (ECC) - ON DEMAND EMISSION UPDATE MODE
+!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!
+!! WRAPPER / INTERFACE FUNCTIONS
+!!
+!! NOTE - I find using an explicity wrapper provides much better flow control
+!!          over an interface block
+!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!
+!-- 20200203 (ECC)
+!
+!------------------------------------------------------------------------------!
+! Description:
+! ------------
+!>  interface for initiation of emission arrays based on emission LOD
+!
+!------------------------------------------------------------------------------!
+
+ SUBROUTINE chem_emissions_header_init
+
+    IMPLICIT NONE
+
+    SELECT CASE ( emiss_lod )
+       CASE ( 0 )
+! do nothing at the moment
+       CASE ( 1 )
+! do nothing at the moment
+       CASE ( 2 )
+          CALL chem_emissions_header_init_lod2
+    END SELECT
+
+ END SUBROUTINE chem_emissions_header_init
+
+
+!
+!-- 20200203 (ECC)
+!
+!------------------------------------------------------------------------------!
+! Description:
+! ------------
+!>  interface for initiation of emission arrays based on emission LOD
+!
+!------------------------------------------------------------------------------!
+
+ SUBROUTINE chem_emissions_update_on_demand
+
+    IMPLICIT NONE
+
+    SELECT CASE ( emiss_lod )
+       CASE ( 0 )
+! do nothing at the moment
+       CASE ( 1 )
+! do nothing at the moment
+       CASE ( 2 )
+          CALL chem_emissions_update_on_demand_lod2
+    END SELECT
+
+ END SUBROUTINE        ! chem_emisisons_update_on_demand
+
+ 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!
+!! SUBROUTINES SPECIFIC FOR LOD 2
+!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!
+!-- 20200203 (ECC)
+!
+!------------------------------------------------------------------------------!
+! Description:
+! ------------
+!>  Initiates header for emissions data attributes for LOD 2
+!------------------------------------------------------------------------------!
+
+ SUBROUTINE chem_emissions_header_init_lod2
+
+    USE control_parameters,                                                 &
+        ONLY: coupling_char, message_string
+
+    USE netcdf_data_input_mod,                                              &
+        ONLY: chem_emis_att,                                                &
+              open_read_file, close_input_file,                             &
+              get_dimension_length, get_variable,                           &
+              get_attribute
+
+    IMPLICIT NONE
+
+    INTEGER(iwp) ::  ncid      !< chemistry file netCDF handle
+    INTEGER(iwp) ::  att_lod   !<  lod attribute in chemistry file
+
+    IF  ( debug_output )  &
+       CALL debug_message( 'chem_emissions_header_init_lod2', 'start' )
+
+!
+!-- opens _chemistry input file and obtain header information
+
+    CALL open_read_file ( TRIM(input_file_chem) // TRIM(coupling_char), ncid )
+!
+!-- check if LOD in chemistry file matches LOD in namelist
+
+    CALL get_attribute ( ncid, 'lod', att_lod, .TRUE. )
+   
+    IF  ( att_lod /= emiss_lod )  THEN
+       message_string = ''   ! to get around unused variable warning / error
+       WRITE ( message_string, * )                                           &
+             'LOD mismatch between namelist (emiss_lod) and',                &
+             CHAR(10), '                    ',                               &
+             'chemistry input file (global attributes>lod)'
+       CALL message( 'chem_emissions_header_init_lod2', 'CM0468', 1, 2, 0, 6, 0 )
+    ENDIF
+!
+!-- obtain unit conversion factor
+
+    CALL get_attribute ( ncid, 'units', chem_emis_att%units, .FALSE., "emission_values" )
+    conversion_factor = chem_emissions_convert_base_units ( chem_emis_att%units )
+!
+!-- obtain header attributes
+
+    CALL chem_emissions_init_species    ( ncid )
+    CALL chem_emissions_init_timestamps ( ncid )
+!
+!-- done reading file
+
+    CALL close_input_file (ncid)
+
+!
+!-- set previous timestamp index to something different
+!-- to trigger a read event later on
+
+    previous_timestamp_index = -1
+ 
+    IF  ( debug_output )  &
+       CALL debug_message( 'chem_emissions_header_init_lod2', 'end' )
+
+ END SUBROUTINE chem_emissions_header_init_lod2
+
+!
+!-- 20200203 (ECC)
+!
+!------------------------------------------------------------------------------!
+! Description:
+! ------------
+!> Reads emission data on demand for LOD2
+!------------------------------------------------------------------------------!
+
+ SUBROUTINE chem_emissions_update_on_demand_lod2
+
+    USE control_parameters,                                                  &
+        ONLY: coupling_char,                                                 &
+              time_since_reference_point
+
+    USE netcdf_data_input_mod,                                               &
+        ONLY: chem_emis_att,                                                 &
+              open_read_file, close_input_file, get_variable
+
+    USE arrays_3d,                                                           &
+        ONLY: pt, hyp
+
+    USE surface_mod,                                                         &
+        ONLY: surf_def_h, surf_lsm_h, surf_usm_h
+
+
+    IMPLICIT NONE
+
+    CHARACTER(LEN=80) ::  this_timestamp   !< writes out timestamp
+
+    INTEGER(iwp) ::  i,j,k,m                !< generic counters
+    INTEGER(iwp) ::  kmatch                 !< index of matched species
+    INTEGER(iwp) ::  ncid                   !< netCDF file handle (chemistry file)
+    INTEGER(iwp) ::  time_index_location    !< location of most recent timestamp
+
+    REAL(wp), ALLOCATABLE, DIMENSION(:,:,:,:,:) ::  emissions_raw  !< raw emissions data
+    REAL(wp), ALLOCATABLE, DIMENSION(:,:,:)     ::  emis_distrib   !< surface emissions
+    REAL(wp), ALLOCATABLE, DIMENSION(:,:)       ::  mass2mole      !< conversion factor mass 2 molar (ppm) flux
+    REAL(wp), ALLOCATABLE, DIMENSION(:,:)       ::  cssws_def_h    !< dummy default surface array
+    REAL(wp), ALLOCATABLE, DIMENSION(:,:)       ::  cssws_lsm_h    !< dummy LSM surface array
+    REAL(wp), ALLOCATABLE, DIMENSION(:,:)       ::  cssws_usm_h    !< dummy USM surface array
+
+    IF  ( debug_output )  &
+       CALL debug_message ( 'chem_emissions_update_on_demand_lod2', 'start' )
+!
+!-- obtain current timestamp and locate index
+!-- for most recent timestamp element
+!-- end subroutine (RETURN) if it is still the same
+!-- index as the existing time index
+
+    this_timestamp = ''   ! string must be initiated before using
+    CALL get_date_time( time_since_reference_point, date_time_str=this_timestamp )
+
+    time_index_location = chem_emissions_locate_timestep                     & 
+                             ( this_timestamp, timestamps,                   &
+                               1, chem_emis_att%dt_emission )
+
+    IF  ( time_index_location == previous_timestamp_index )  RETURN
+
+!
+!-- begin extract emission data for matched species from netCDF file
+
+    previous_timestamp_index = time_index_location
+
+    ALLOCATE ( emis_distrib(n_matched_vars,nys:nyn,nxl:nxr) )
+    emis_distrib = 0.0_wp
+
+!
+!-- open netCDF file and allocate temp memory
+
+    CALL open_read_file( TRIM(input_file_chem) // TRIM(coupling_char), ncid )
+    ALLOCATE( emissions_raw(1,1,nys:nyn,nxl:nxr,1) )
+
+    DO k = 1, n_matched_vars
+!
+!-- get index for matching species
+
+       kmatch = chem_emissions_locate_species (                               &
+                               spc_names(match_spec_model(k)),                &
+                               chem_emis_att%species_name )
+!
+!-- extract variable as-is
+!-- (note C index notations for nx and ny due to MPI and
+!-- reversed index dimension order for netCDF Fortran API)
+
+       emissions_raw = 0.0_wp
+
+       CALL get_variable ( ncid, 'emission_values', emissions_raw,            &
+                           kmatch, nxl+1, nys+1, 1, time_index_location,      &
+                           1, nxr-nxl+1, nyn-nys+1, 1, 1, .FALSE. )
+!
+!-- transfer emission data 
+
+       DO j = nys,nyn
+         DO i = nxl,nxr
+            emis_distrib(k,j,i) = emissions_raw(1,1,j,i,1) * conversion_factor
+         ENDDO
+       ENDDO
+
+    ENDDO  ! k = n_matched_vars
+!
+!-- netCDF handle and temp memory no longer needed
+
+    DEALLOCATE( emissions_raw )
+    CALL close_input_file( ncid )
+!
+!-- Set emis_dt since chemistry ODEs can be stiff, the option
+!-- to solve them at every RK substep is present to help improve
+!-- stability should the need arises
+ 
+    dt_emis = dt_3d
+
+    IF  ( call_chem_at_all_substeps )                                          &
+       dt_emis = dt_emis * weight_pres(intermediate_timestep_count)
+!
+!-- calculate conversion factor from mass flux to molar flux (mixing ratio)
+
+    ALLOCATE ( mass2mole(nys:nyn,nxl:nxr) )
+    mass2mole = 0.0_wp
+
+    DO i = nxl, nxr
+       DO j = nys, nyn
+          mass2mole(j,i) = mass_2_molar_flux ( hyp(nzb), pt(nzb,j,i) )
+       ENDDO
+    ENDDO
+
+!
+!-- calculate surface fluxes
+!-- NOTE - For some reason I cannot pass surf_xxx%cssws as output argument
+!--        into subroutine assign_surface_flux ( ).  The contents got mixed up
+!--        once the subroutine is finished.  I don't know why and I don't have
+!--        time to investigate.  As workaround I declared dummy variables
+!--        and reassign them one by one (i.e., in a loop)
+!-- ECC 20200206
+
+!
+!-- allocate and initialize dummy surface fluxes
+
+    ALLOCATE( cssws_def_h(n_matched_vars,surf_def_h(0)%ns) )
+    cssws_def_h = 0.0_wp
+
+    ALLOCATE( cssws_lsm_h(n_matched_vars,surf_lsm_h%ns) )
+    cssws_lsm_h = 0.0_wp
+
+    ALLOCATE( cssws_usm_h(n_matched_vars,surf_usm_h%ns) )
+    cssws_usm_h = 0.0_wp
+
+!
+!-- assign and transfer emissions as surface fluxes
+
+    CALL assign_surface_flux ( cssws_def_h, surf_def_h(0)%ns,                  &
+                               surf_def_h(0)%j, surf_def_h(0)%i,               &
+                               emis_distrib, mass2mole )
+
+
+    CALL assign_surface_flux ( cssws_lsm_h, surf_lsm_h%ns,                     &
+                               surf_lsm_h%j, surf_lsm_h%i,                     &
+                               emis_distrib, mass2mole )
+
+
+    CALL assign_surface_flux ( cssws_usm_h, surf_usm_h%ns,                     &
+                               surf_usm_h%j, surf_usm_h%i,                     &
+                               emis_distrib, mass2mole )
+
+    DO k = 1, n_matched_vars
+
+       DO m = 1, surf_def_h(0)%ns
+          surf_def_h(0)%cssws(k,m) = cssws_def_h(k,m)
+       ENDDO
+
+       DO m = 1, surf_lsm_h%ns
+          surf_lsm_h%cssws(k,m)    = cssws_lsm_h(k,m)
+       ENDDO
+
+       DO m = 1, surf_usm_h%ns
+          surf_usm_h%cssws(k,m)    = cssws_usm_h(k,m)
+       ENDDO
+
+    ENDDO
+
+!
+!-- cleaning up
+
+    DEALLOCATE( cssws_def_h )
+    DEALLOCATE( cssws_lsm_h )
+    DEALLOCATE( cssws_usm_h )
+
+    DEALLOCATE ( emis_distrib )
+    DEALLOCATE ( mass2mole )
+
+    IF  ( debug_output )  &
+       CALL debug_message ( 'chem_emissions_update_on_demand_lod2', 'end' )
+
+ END SUBROUTINE        ! chem_emissions_update_on_demand_lod2
+
+ 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!
+!! AUXILIARY SUBROUTINES
+!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!
+!-- 20200203 (ECC)
+!
+!------------------------------------------------------------------------------!
+! Description:
+! ------------
+!> look for matched species between emissions attributes and selected
+!> chemical mechanisms and determine corresponding molecular weights
+!------------------------------------------------------------------------------!
+
+ SUBROUTINE chem_emissions_init_species ( ncid )
+
+    USE netcdf_data_input_mod,                                              &
+        ONLY: chem_emis_att,                                                &
+              open_read_file, close_input_file,                             &
+              get_dimension_length, get_variable
+
+    IMPLICIT NONE
+
+    INTEGER(iwp) :: ispec  !< generic counter 4 species
+
+    INTEGER(iwp), INTENT(IN) :: ncid   !< netcdf file ID
+
+    IF  ( debug_output )  &
+       CALL debug_message( 'chem_emissions_init_species', 'start' )
+!
+!- assign species
+
+    CALL get_dimension_length ( ncid, chem_emis_att%n_emiss_species, 'nspecies' )
+    CALL get_variable ( ncid, 'emission_name', chem_emis_att%species_name,   &
+                              chem_emis_att%n_emiss_species )
+!
+!- backward compatibility for salsa_mod (ECC)
+    chem_emis_att%nspec = chem_emis_att%n_emiss_species
+!
+!-- get a list of matched species between emission_attributes and
+!-- selected chemical mechanism
+
+    emission_output_required = .FALSE.
+    CALL  chem_emissions_match( chem_emis_att, n_matched_vars )
+
+!
+!-- if matched species found (at least 1)
+!-- allocate memory for emission attributes
+!-- assign molecular masses [kg/mol]
+!-- see chemistry_model_mod.f90 for reference
+
+    IF  ( n_matched_vars > 0 )  THEN
+
+       emission_output_required = .TRUE.
+
+       ALLOCATE( chem_emis_att%xm(n_matched_vars) )
+
+       DO  ispec = 1, n_matched_vars
+          chem_emis_att%xm(ispec) = 1.0_wp
+          SELECT CASE ( TRIM( spc_names(match_spec_model(ispec)) ) )
+             CASE ( 'SO2'  );  chem_emis_att%xm(ispec) = xm_S + xm_O * 2
+             CASE ( 'SO4'  );  chem_emis_att%xm(ispec) = xm_S + xm_O * 4
+             CASE ( 'NO'   );  chem_emis_att%xm(ispec) = xm_N + xm_O
+             CASE ( 'NO2'  );  chem_emis_att%xm(ispec) = xm_N + xm_O * 2
+             CASE ( 'NH3'  );  chem_emis_att%xm(ispec) = xm_N + xm_H * 3
+             CASE ( 'CO'   );  chem_emis_att%xm(ispec) = xm_C + xm_O
+             CASE ( 'CO2'  );  chem_emis_att%xm(ispec) = xm_C + xm_O * 2
+             CASE ( 'CH4'  );  chem_emis_att%xm(ispec) = xm_C + xm_H * 4
+             CASE ( 'HNO3' );  chem_emis_att%xm(ispec) = xm_H + xm_N + xm_O*3
+          END SELECT
+       ENDDO
+    
+    ENDIF  ! IF ( n_matched_vars > 0 )
+
+    IF  ( debug_output )  &
+       CALL debug_message( 'chem_emissions_init_species', 'end' )
+
+ END SUBROUTINE chem_emissions_init_species
+
+ 
+!
+!-- 20200203 (ECC)
+!
+!------------------------------------------------------------------------------!
+! Description:
+! ------------
+!> extract timestamps from netCDF input
+!------------------------------------------------------------------------------!
+
+ SUBROUTINE chem_emissions_init_timestamps ( ncid )
+
+    USE control_parameters,                                                 &
+        ONLY: message_string
+
+    USE netcdf_data_input_mod,                                              &
+        ONLY: chem_emis_att,                                                &
+              open_read_file, close_input_file,                             &
+              get_dimension_length, get_variable
+
+    IMPLICIT NONE
+
+    INTEGER(iwp) ::  fld_len   !< string field length
+    INTEGER(iwp) ::  itime     !< generic counter (4 species)
+
+    INTEGER(iwp), INTENT(IN) :: ncid   !< netcdf file handle
+
+    IF  ( debug_output )  &
+       CALL debug_message( 'chem_emissions_read_timestamps', 'start' )
+!
+!-- import timestamps from netCDF input
+
+    CALL get_dimension_length ( ncid, chem_emis_att%dt_emission, 'time' )
+    CALL get_dimension_length ( ncid, fld_len, 'field_length' )
+    CALL get_variable ( ncid, 'timestamp', timestamps, chem_emis_att%dt_emission, fld_len )
+!
+!-- throw error at first instance of timestamps
+!-- not in listed in chronological order
+
+    DO itime = 2,chem_emis_att%dt_emission
+
+       IF ( timestamps(itime-1) > timestamps(itime) )  THEN
+
+           WRITE( message_string, * ) &
+                'input timestamps not in chronological order for',             &
+                CHAR(10), '                    ',                              &
+                'index ', (itime-1), ' : ', TRIM(timestamps(itime-1)), ' and', &
+                CHAR(10), '                    ',                              &
+                'index ', (itime),   ' : ', TRIM(timestamps(itime)) 
+
+          CALL message( 'chem_emissions_read_timestamps', 'CM0469', 1, 2, 0, 6, 0 )
+
+       ENDIF
+
+    ENDDO
+
+    IF  ( debug_output )  &
+       CALL debug_message( 'chem_emissions_read_timestamps', 'end' )
+
+ END SUBROUTINE chem_emissions_init_timestamps
+
+
+!
+!-- 20200203 (ECC)
+!
+!------------------------------------------------------------------------------!
+! Description:
+! ------------
+!> assign emissions as surface fluxes
+!
+!> NOTE:  For arguments, I originally wanted to use unspecified dimensions,
+!>        but I could not get this to work properly, hence the dimensioned
+!>        array arguments
+!------------------------------------------------------------------------------!
+
+SUBROUTINE assign_surface_flux ( surf_array, nsurfs, surf_j, surf_i,         &
+                                 emis_dist, conv_mole )
+
+    USE arrays_3d,                                                           &
+        ONLY: rho_air
+
+    USE netcdf_data_input_mod,                                               &
+        ONLY: chem_emis_att
+
+    USE surface_mod   !< for surf_type
+
+    IMPLICIT NONE
+!
+!-- input arguments
+
+    INTEGER(iwp),                    INTENT(IN) ::  nsurfs   !< # surfaces in surf_array
+    INTEGER(iwp), DIMENSION(nsurfs), INTENT(IN) ::  surf_i   !< i indices 4 surf. elements
+    INTEGER(iwp), DIMENSION(nsurfs), INTENT(IN) ::  surf_j   !< j indices 4 surf. elements
+
+    REAL(wp), DIMENSION(nys:nyn,nxl:nxr),                INTENT(IN)    ::  conv_mole   !< conv. 2 molar flux
+    REAL(wp), DIMENSION(n_matched_vars,nys:nyn,nxl:nxr), INTENT(IN)    ::  emis_dist   !< surf. emissions
+
+    REAL(wp), DIMENSION(n_matched_vars,nsurfs),          INTENT(INOUT) ::  surf_array  !< surface listing
+
+!
+!-- parameters (magic numbers)
+
+    CHARACTER(LEN=2),  PARAMETER ::  sp_PM  = 'PM'   !< id string for all PMs
+    CHARACTER(LEN=3),  PARAMETER ::  sp_VOC = 'VOC'  !< id string for VOC
+
+    REAL(wp), PARAMETER ::  mol2ppm = 1.0E+06_wp     !< conversion from mole 2 ppm
+!
+!-- local variables
+
+    CHARACTER(LEN=80) ::  this_species_name  !< matched species name
+
+    INTEGER(iwp) ::  i,j,k,m        !< generic counters
+
+    REAL(wp) ::  flux_conv_factor   !< conversion factor
+
+    IF  ( debug_output )  &
+       CALL debug_message( 'chem_emissions_header_init_lod2', 'start' )
+
+    DO k = 1, n_matched_vars
+
+       this_species_name = spc_names(k)  !< species already matched
+
+       DO m = 1, nsurfs
+
+          j = surf_j(m)   ! get surface coordinates
+          i = surf_i(m)
+
+!
+!-- calculate conversion factor depending on emission species type
+
+          flux_conv_factor = rho_air(nzb)
+!
+!-- account for conversion to different types of emisison species
+
+          IF       ( TRIM(this_species_name(1:LEN(sp_PM)))  == sp_PM  )  THEN
+
+                ! do nothing (use mass flux directly)
+
+          ELSE IF  ( TRIM(this_species_name(1:LEN(sp_VOC))) == sp_VOC )  THEN
+
+             flux_conv_factor = flux_conv_factor *                           &
+                                conv_mole(j,i) * mol2ppm
+
+          ELSE
+
+             flux_conv_factor = flux_conv_factor *                           &
+                                conv_mole(j,i) * mol2ppm /                   &
+                                chem_emis_att%xm(k)
+
+          ENDIF
+!
+!-- finally assign surface flux
+
+          surf_array(k,m) = emis_dist(k,j,i) * flux_conv_factor
+
+       ENDDO   ! m = 1, nsurfs
+
+    ENDDO   ! k = 1, n_matched_vars
+
+
+    IF  ( debug_output )  &
+       CALL debug_message( 'chem_emissions_header_init_lod2', 'end' )
+   
+END SUBROUTINE assign_surface_flux
+
+ 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!
+!! AUXILIARY FUNCTIONS
+!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!
+!-- 20200203 (ECC)
+!
+!------------------------------------------------------------------------------!
+! Description:
+! ------------
+!> given incoming flux units ( mass / area / time ) provide single-valued
+!> conversion factor to ( kg / m2 / s )
+!------------------------------------------------------------------------------!
+
+ FUNCTION chem_emissions_convert_base_units ( units_in ) RESULT ( conv_factor )
+
+    IMPLICIT NONE
+!
+!-- function arguments
+
+    REAL(wp) ::  conv_factor                       !< convertion factor
+
+    CHARACTER(LEN=*), INTENT(IN) ::  units_in      !< incoming units (ie emt_att%units)
+!
+!-- parameters (magic numbers)
+
+    INTEGER(iwp), PARAMETER ::  up2lo = 32         !< convert letter to lower case
+!
+!-- base unit conversion factors (should be self-explanatory)
+
+    REAL(wp), PARAMETER ::  g_to_kg       =     1.0E-03_wp
+    REAL(wp), PARAMETER ::  miug_to_kg    =     1.0E-09_wp
+    REAL(wp), PARAMETER ::  tons_to_kg    =   100.0_wp
+
+    REAL(wp), PARAMETER ::  hour_per_year =  8760.0_wp
+    REAL(wp), PARAMETER ::  s_per_hour    =  3600.0_wp
+    REAL(wp), PARAMETER ::  s_per_day     = 86400.0_wp
+
+    REAL(wp), PARAMETER ::  day_to_s      =     1.0_wp / s_per_day
+    REAL(wp), PARAMETER ::  hour_to_s     =     1.0_wp / s_per_hour
+    REAL(wp), PARAMETER ::  year_to_s     =     1.0_wp / s_per_hour / hour_per_year 
+!
+!-- local variables
+
+    CHARACTER(LEN=LEN(units_in)) ::  units_in_lo   !< units in lower case
+
+    INTEGER(iwp) ::  j,k                           !< generic counters
+    INTEGER(iwp) ::  str_len                       !< length of unit string
+!
+!-- turn units string to lower case
+ 
+    units_in_lo = ''
+    str_len = LEN(TRIM(units_in))
+
+    DO k = 1,str_len
+       j = IACHAR( units_in(k:k) )
+       units_in_lo(k:k) = ACHAR(j)
+       IF  ( (j>=IACHAR("A")) .AND. (j<=IACHAR("Z")) )   &
+          units_in_lo(k:k) = ACHAR ( j + up2lo )
+    ENDDO
+
+    conv_factor = 1.0_wp     !< default value (kg/m2/s)
+
+    SELECT CASE ( TRIM( units_in_lo ) )
+       CASE ( 'kg/m2/s'            );   conv_factor = 1.0_wp
+       CASE ( 'kg/m2/hour'         );   conv_factor = hour_to_s
+       CASE ( 'kg/m2/day'          );   conv_factor = day_to_s
+       CASE ( 'kg/m2/year'         );   conv_factor = year_to_s
+       CASE ( 'ton/m2/s'           );   conv_factor = tons_to_kg
+       CASE ( 'ton/m2/hour'        );   conv_factor = tons_to_kg * hour_to_s
+       CASE ( 'ton/m2/day'         );   conv_factor = tons_to_kg * day_to_s
+       CASE ( 'ton/m2/year'        );   conv_factor = tons_to_kg * year_to_s
+       CASE ( 'g/m2/s'             );   conv_factor = g_to_kg
+       CASE ( 'g/m2/hour'          );   conv_factor = g_to_kg * hour_to_s
+       CASE ( 'g/m2/day'           );   conv_factor = g_to_kg * day_to_s
+       CASE ( 'g/m2/year'          );   conv_factor = g_to_kg * year_to_s
+       CASE ( 'micrograms/m2/s'    );   conv_factor = miug_to_kg
+       CASE ( 'micrograms/m2/hour' );   conv_factor = miug_to_kg * hour_to_s
+       CASE ( 'micrograms/m2/day'  );   conv_factor = miug_to_kg * day_to_s
+       CASE ( 'micrograms/m2/year' );   conv_factor = miug_to_kg * year_to_s
+       CASE DEFAULT
+          message_string = ''   ! to get around unused variable warning / error
+          WRITE ( message_string, * ) 'Specified emission units (',          &
+                                      TRIM(units_in),                        &
+                                      ') not recognized in PALM-4U'
+          CALL message ( 'chem_emission_convert_units', 'CM0446', 2, 2, 0, 6, 0 )
+    END SELECT
+
+ END FUNCTION chem_emissions_convert_base_units
+
+
+!
+!-- 20200203 (ECC)
+!
+!------------------------------------------------------------------------------!
+! Description:
+! ------------
+!> calculates conversion factor from mass flux to ppm (molar flux)
+!------------------------------------------------------------------------------!
+
+ FUNCTION mass_2_molar_flux ( rhogh, theta ) RESULT ( conv_factor )
+
+    USE basic_constants_and_equations_mod,                                   &
+        ONLY: p_0, rgas_univ, rd_d_cp
+
+    IMPLICIT NONE
+!
+!-- function arguments
+
+    REAL(wp)             ::  conv_factor   !< conversion factor
+    REAL(wp), INTENT(IN) ::  rhogh         !< hydrostatic pressure
+    REAL(wp), INTENT(IN) ::  theta         !< potential temperature
+
+    conv_factor = ( rgas_univ / rhogh ) * theta * ( ( rhogh / p_0 ) ** rd_d_cp )
+
+ END FUNCTION mass_2_molar_flux
+
+
+!
+!-- 20200203 (ECC)
+!
+!------------------------------------------------------------------------------!
+! Description:
+! ------------
+!> given target sepecies locate index in species array
+!> returns 0 if none is found
+!------------------------------------------------------------------------------!
+
+ FUNCTION chem_emissions_locate_species ( this_species, species_array )      &
+          RESULT ( species_index )
+
+    IMPLICIT NONE
+!
+!-- function arguments
+
+    INTEGER(iwp) ::  species_index   !> index matching species
+
+    CHARACTER(LEN=*),  INTENT(IN) ::  this_species       !> target species
+    CHARACTER(LEN=25), INTENT(IN) ::  species_array(:)   !> array of species
+!
+!-- local variables
+
+    INTEGER(iwp) :: k           !> generic counter
+    INTEGER(iwp) :: n_species   !> number of species in species_array
+
+    n_species = SIZE( species_array, 1 )
+
+    DO k = 1, n_species
+       IF ( TRIM(species_array(k)) == TRIM(this_species) )  EXIT
+    ENDDO
+
+    species_index = 0   !> assume no matching index is found
+
+    IF ( TRIM(species_array(k)) == TRIM(this_species) )  specieS_index = k
+
+ END FUNCTION chem_emissions_locate_species
+
+
+!
+!-- 20200203 (ECC)
+!
+!------------------------------------------------------------------------------!
+! Description:
+! ------------
+!> given target timestamp locate most recent timestep in timestamp array
+!> using bisection search (since array is sorted)
+!------------------------------------------------------------------------------!
+
+ RECURSIVE FUNCTION chem_emissions_locate_timestep                           &
+                       ( this_timestamp, timestamp_array,                    &
+                         lower_bound, upper_bound )                          &
+                       RESULT ( timestamp_index )
+
+!
+!-- function arguments
+
+    INTEGER(iwp) ::  timestamp_index   !> index for most recent timestamp in timestamp_array
+
+    CHARACTER(LEN=*),   INTENT(IN) ::  this_timestamp       !> target timestamp
+    CHARACTER(LEN=512), INTENT(IN) ::  timestamp_array(:)   !> array of timestamps
+
+    INTEGER(iwp), INTENT(IN) ::  lower_bound, upper_bound   !> timestamp_array index bounds
+
+!
+!-- local variables
+
+    INTEGER(iwp) :: k0,km,k1          !> lower, central, and upper index bounds
+!
+!-- assign bounds
+
+    k0 = lower_bound
+    k1 = upper_bound
+!
+!-- make sure k1 is always not smaller than k0
+
+    IF  ( k0 > k1 )  THEN
+       k0 = upper_bound
+       k1 = lower_bound
+    ENDIF
+!
+!-- make sure k0 and k1 stay within array bounds by timestamp_array
+
+    IF  ( k0 < 1                       )  k0 = 1
+    IF  ( k1 > SIZE(timestamp_array,1) )  k1 = SIZE(timestamp_array,1)
+!
+!-- terminate if target is contained within 2 consecutive indices
+!-- otherwise calculate central bound (km) and determine new
+!-- index bounds for the next iteration
+
+    IF ( ( k1 - k0 ) > 1 )  THEN
+       km = ( k0 + k1 ) / 2
+       IF  ( TRIM(this_timestamp) > TRIM(timestamp_array(km)) )  THEN
+          k0 = km
+       ELSE
+          k1 = km
+       ENDIF
+       timestamp_index = chem_emissions_locate_timestep &
+                         ( this_timestamp, timestamp_array, k0, k1 )
+    ELSE
+       timestamp_index = k0
+    ENDIF
+
+ END FUNCTION chem_emissions_locate_timestep
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!
+!! END OF MODULE
+!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  END MODULE chem_emissions_mod

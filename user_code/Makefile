@@ -27,7 +27,17 @@
 # 
 # Former revisions:
 # -----------------
-# $Id: Makefile 4366 2020-01-09 08:12:43Z raasch $
+# $Id: Makefile 4414 2020-02-19 20:16:04Z suehring $
+# Move dependencies for init grid from advection scheme and multigrid solver
+# to module_interface
+# 
+# 4411 2020-02-18 14:28:02Z maronga
+# Added output routines for WTM
+# 
+# 4400 2020-02-10 20:32:41Z suehring
+# Add dependency for data-output module
+# 
+# 4392 2020-01-31 16:14:57Z pavelkrc
 # add dependency on fft for transpose
 # 
 # 4347 2019-12-18 13:18:33Z suehring
@@ -661,13 +671,10 @@ init_coupling.o: \
 	modules.o \
 	vertical_nesting_mod.o
 init_grid.o: \
-	advec_ws.o \
 	mod_kinds.o \
 	modules.o \
 	netcdf_data_input_mod.o \
 	netcdf_interface_mod.o \
-	poismg_noopt_mod.o \
-	surface_mod.o \
 	vertical_nesting_mod.o
 init_masks.o: \
 	bulk_cloud_model_mod.o \
@@ -753,6 +760,7 @@ module_interface.o: \
 	biometeorology_mod.o \
 	bulk_cloud_model_mod.o \
 	chemistry_model_mod.o \
+	data_output_module.o \
 	diagnostic_output_quantities_mod.o \
 	dynamics_mod.o \
 	gust_mod.o \
@@ -765,10 +773,12 @@ module_interface.o: \
 	nesting_offl_mod.o \
 	ocean_mod.o \
 	plant_canopy_model_mod.o \
+	poismg_noopt_mod.o \
 	radiation_model_mod.o \
 	salsa_mod.o \
 	spectra_mod.o \
 	surface_data_output_mod.o \
+	surface_mod.o \
 	synthetic_turbulence_generator_mod.o \
 	turbulence_closure_mod.o \
 	urban_surface_mod.o \
@@ -1278,17 +1288,22 @@ virtual_flight_mod.o: \
 	user_flight.o \
 	user_init_flight.o
 virtual_measurement_mod.o: \
+	basic_constants_and_equations_mod.o \
 	cpulog_mod.o \
 	chem_modules.o \
 	chem_gasphase_mod.o \
+	data_output_module.o \
+	land_surface_model_mod.o \
 	mod_kinds.o \
 	modules.o \
 	netcdf_data_input_mod.o \
-	netcdf_interface_mod.o \
-	radiation_model_mod.o
+	radiation_model_mod.o \
+	surface_mod.o \
+	urban_surface_mod.o
 wind_turbine_model_mod.o: \
 	basic_constants_and_equations_mod.o \
 	cpulog_mod.o \
+	data_output_module.o \
 	mod_kinds.o \
 	modules.o
 wrd_write_string.o: \
