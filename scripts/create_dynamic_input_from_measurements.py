@@ -37,10 +37,10 @@ mpl.rc( 'font', size=def_fs )
 sim_year    = 2017
 sim_month   = 6 # 12
 sim_day     = 9 # 7
-sim_time    = 'morning'
+sim_time    = 'evening'
 datestr     = '{}{:02d}{:02d}'.format( sim_year, sim_month, sim_day )
 
-precursor   = True
+precursor   = False
 
 # ------------------------------------------------------------------------------------------------#
 
@@ -75,6 +75,53 @@ elif ( datestr=='20171207' and sim_time=='morning' ):
 if precursor:
   end_hour = start_hour
   start_hour -= 1
+  
+#%% Inline functions
+
+# ------------------------------------------------------------------------------------------------#
+# Convert the height to pressure:
+def barometric_formula( z, t0, p0 ):
+  
+  # Give height in metres, temperature in Kelvin and p in Pa!
+  
+  g = 9.81 # m/s2
+  cp = 1005.0 # J/kg
+  rd = 287 # J/(kg*K)
+  
+  # Hydrostatic pressure
+  hyp = p0 * ( ( t0 - ( g/cp ) * z ) / t0 )**( cp/rd )
+  
+  return hyp
+
+# ------------------------------------------------------------------------------------------------#  
+# Dew point temperature to q: assume that p=pressure_smear
+def specific_humidity_from_dew( dew, p ):
+
+  # Give temperatures in Kelvin and p in Pa!
+  
+  rd = 287 # J/(kg*K)
+  rv = 461.51 # J/(kg*K)
+  e0 = 611.2 # Pa
+  
+  # Magnus formula
+  es = e0 * np.exp( 17.62 * ( dew - 273.15 ) / ( dew - 29.65 ) )
+  
+  # Specific humidity (kg/kg)
+  q = ( rd / rv ) * es / ( p-es )
+  
+  return q
+
+# ------------------------------------------------------------------------------------------------#
+# Exner formula to convert temperature to potential temperature and back
+def exner_function( p ):
+  
+  p0 = 101325 # Pa
+  rd = 287
+  cp = 1004
+  exner = ( p / p0 )**( rd/cp )
+  
+  return exner
+  
   
 #%% Filenames
 
@@ -395,28 +442,26 @@ for t in range( ntimesteps ):
       print( 'too high dew point temperature: T={:2.1f}C, TD={:2.1f}C --> T={:2.1f}C'\
              ' (0.98*T)'.format( Tk[t,zi], TDk[t,zi], Tk[t,zi] * 0.98 ) )
       TDk[t,zi] = 0.98*Tk[t,zi]
+      
+# Change the temperature unit from degrees Celsius to Kelvin
+Tk += 273.15
+TDk += 273.15
   
-# Dew point temperature to q: assume that p=pressure_smear
-def specific_humidity_from_dew( dew, p ):
+# Derive pressure levels from the barometric equation (i.e. assume neutral stratification with a
+# lapse rate of g/cp)
+pk = np.zeros( np.shape( Tk ) )
+for t in range( ntimesteps ):
+  pk[t,:] = barometric_formula( zk, Tk[t,:], pressure_smear[t]*100 )
+  
+# Derive the potential temperature
+ptk = np.zeros( np.shape( Tk ) )
+for t in range( ntimesteps ):
+  ptk[t,:] = Tk[t,:] / exner_function( pk[t,:] )
 
-  # Give temperatures in Kelvin and p in hPa!
-  
-  e0 = 6.113 # saturation vapor pressure in hPa
-  c_water = 5423 # L/R for water in Kelvin
-  T0 = 273.15 # Kelvin
-  
-  # saturation vapor not required, uncomment to calculate it (units in hPa becuase of e0)
-  #sat_vapor = e0 * np.exp((self.c * (temp -T0))/(temp * T0)) 
-  
-  #calculating specific humidity, q directly from dew point temperature
-  #using equation 4.24, Pg 96 Practical Meteorolgy (Roland Stull)
-  q = ( 622 * e0 * np.exp( c_water * ( dew - T0 ) / ( dew * T0 ) ) ) / p # g/kg 
-  # 622 is the ratio of Rd/Rv in g/kg
-  return q/1000.0 # in kg/kg
-  
+# Calculate the specific humidity from the dew point temperature and pressure
 qk = np.copy( uk )
-for t in range( len( pressure_smear ) ):
-  qk[t,:] = specific_humidity_from_dew( TDk[t,:]+273.15, pressure_smear[t] )
+for t in range( ntimesteps ):
+  qk[t,:] = specific_humidity_from_dew( TDk[t,:], pk[t,:] )
   
   
 #%% Read SMEARIII DMPS data
@@ -478,25 +523,37 @@ v_prof  = np.copy( u_prof )
 w_prof  = np.zeros( [ntimesteps, len( zw )] )
 pt_prof = np.copy( u_prof )
 qv_prof = np.copy( u_prof )
+p_prof = np.copy( u_prof )
 
 arrays_out = [u_prof, v_prof, w_prof, pt_prof, qv_prof]
 
 iv = 0
-for var in [uk, vk, uk*0, Tk, qk]:
+for var in [uk, vk, uk*0, ptk, qk]:
   if iv == 2:
     zi = zw
   else:
     zi = z
   
+  # profiles to interpolate
+  zin = np.copy( zk )  
+  if iv == 4:
+    zin = np.append( zin, 600.0 )
+  
   for t in range( ntimesteps ):
-    ind = ~np.isnan( var[t,:] )
-    fnearest = interp1d( zk[ind], var[t,ind], kind='nearest', fill_value="extrapolate" )
-    flinear = interp1d( zk[ind], var[t,ind], kind='linear', fill_value="extrapolate" )
-    fcubic  = CubicSpline( zk[ind], var[t,ind] )
     
-    ind2 = zi<=np.max( zk[ind] )
+    # profiles to interpolate
+    varin = np.copy( var[t,:] )
+    if iv == 4:
+      varin = np.append( varin, 0.0 )    
+    
+    ind = ~np.isnan( varin )
+    fnearest = interp1d( zin[ind], varin[ind], kind='nearest', fill_value="extrapolate" )
+    flinear = interp1d( zin[ind], varin[ind], kind='linear', fill_value="extrapolate" )
+    fcubic  = CubicSpline( zin[ind], varin[ind] )
+    
+    ind2 = zi<=np.max( zin[ind] )
     arrays_out[iv][t,ind2] = flinear( zi[ind2] )
-    ind2 = zi>np.max( zk[ind] )
+    ind2 = zi>np.max( zin[ind] )
     arrays_out[iv][t,ind2] = fnearest( zi[ind2] )
     
   iv += 1
@@ -507,8 +564,7 @@ w_prof  = arrays_out[2]
 pt_prof = arrays_out[3]
 qv_prof = arrays_out[4]
 
-
-# Plot:
+#%% Plot:
 txts = ['$U~\mathrm{(m~s^{-1})}$','$\mathrm{WD~(^\circ)}$']
 fig1 = plt.figure(figsize=(12/2.54, 8/2.54), dpi=100  )
 fig2 = plt.figure(figsize=(12/2.54, 8/2.54), dpi=100  )
