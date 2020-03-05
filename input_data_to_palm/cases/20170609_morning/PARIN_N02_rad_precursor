@@ -34,7 +34,7 @@
 !
 !-- Initialization
 !------------------------------------------------------------------------------
-    initializing_actions = 'read_restart_data',   !'set_constant_profiles', or 'inifor', 
+    initializing_actions = 'set_constant_profiles',   !'set_constant_profiles', or 'inifor', 
                                                       ! or both (met. from inifor, chem constant profiles)
 
     origin_date_time     = '2017-06-09 06:00:00 +03',
@@ -84,7 +84,7 @@
 !
 !-- Run steering
 !------------------------------------------------------------------------------
-    end_time              = 8100.0, ! 2*3600s + 15*60s
+    end_time              = 3600.0, ! 3600 (precursor) 2*3600s + 15*60s
     create_disturbances   = .T.,
     netcdf_data_format    = 4,
 

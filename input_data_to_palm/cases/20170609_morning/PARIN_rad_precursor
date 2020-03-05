@@ -1,4 +1,18 @@
 !-------------------------------------------------------------------------------
+!-- NESTING PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/nestpar
+!-------------------------------------------------------------------------------
+ &nesting_parameters
+
+    domain_layouts            = 'root',    1,  -1,  36,    0.0,    0.0, !36 cores
+                                'parent',  2,   1,  36, 3204.0, 2304.0, !36 cores
+                                'child',   3,   2,  72, 4068.0, 3168.0, !72 cores
+    nesting_datatransfer_mode = 'cascade',
+    nesting_mode              = 'one-way',
+
+ / ! end of nesting_parameters namelist
+
+!-------------------------------------------------------------------------------
 !-- INITIALIZATION PARAMETER NAMELIST
 !   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/inipar
 !-------------------------------------------------------------------------------
@@ -9,11 +23,15 @@
 !------------------------------------------------------------------------------
     nx                   = 767,
     ny                   = 767,
-    nz                   =  96,
+    nz                   =  80,
 
-    dx                   = 3.0,
-    dy                   = 3.0,
-    dz                   = 3.0,
+    dx                   = 9.0,
+    dy                   = 9.0,
+    dz                   = 6.0,  ! was 9.0
+
+    dz_stretch_level     = 300.0,
+    dz_stretch_factor    =  1.03, ! was 1.04
+    dz_max               =  18.0,
  
 !
 !-- Numerics
@@ -29,20 +47,16 @@
 !-- Mode
 !------------------------------------------------------------------------------     
     humidity             = .T.,
-    q_surface            = 0.007,
+    q_surface            = 0.007, !0.001
 
 !
 !-- Initialization
 !------------------------------------------------------------------------------
-    initializing_actions = 'read_restart_data',   !'set_constant_profiles', or 'inifor', 
-                                                      ! or both (met. from inifor, chem constant profiles)
+    initializing_actions = 'inifor',   !'set_constant_profiles', or 'inifor', 
+                                       ! or both (met. from inifor, chem constant profiles)
+
 
     origin_date_time     = '2017-06-09 06:00:00 +03',
-
-!
-!-- Statistics
-!------------------------------------------------------------------------------
-    statistic_regions    = 2,
 
 !
 !-- Wall/soil spinup
@@ -53,13 +67,6 @@
     dt_spinup            = 120.0,
     data_output_during_spinup = .F.,
 
-
-!
-!-- Boundary conditions
-!------------------------------------------------------------------------------ 
-!    bc_lr                = 'nested', 
-!    bc_ns                = 'nested',
-!    bc_uv_t              = 'dirichlet',  ! channel flow boundary condition
 
 !
 !-- Topography
@@ -84,7 +91,7 @@
 !
 !-- Run steering
 !------------------------------------------------------------------------------
-    end_time              = 8100.0, ! 2*3600s + 15*60s
+    end_time              = 3600.0, ! 3600 (precursor) 2*3600s + 15*60s
     create_disturbances   = .T.,
     netcdf_data_format    = 4,
 
@@ -105,10 +112,7 @@
     data_output_pr        = 'u',  'u*2',  'wu',  'w*u*',  'w"u"',
                             'v',  'v*2',  'wv',  'w*v*',  'w"v"',
                             'w',  'w*2',
-                            'rho',
                             'theta', 'theta*2', 'wtheta', 'w*theta*', 'w"theta"',
-                            'thetav', 'wthetav', 'w*thetav*', 'w"thetav"', !thetav*2 doesn't exist
-                            'w*u*u*:dz', 'w*p*:dz',
                             'q',  'q*2',
                             'e', 'e*', 
 !
@@ -117,12 +121,13 @@
     do3d_at_begin      = .F., 
     do2d_at_begin      = .F.,
 
-    dt_data_output     = 300.0, 
-    dt_data_output_av  = 600.0,
-    averaging_interval = 600.0,
-    dt_averaging_input =   1.0, 
+    dt_data_output     = 300.0,
+    dt_data_output_av  = 900.0, 
+    averaging_interval = 900.0,
+    dt_averaging_input =   1.0,
 
-    section_xy         = 7, 14, 20, 27, 33, 50, 67, 83, 
+
+    section_xy         = 3, 7, 10, 13, 17, 25, 33, 42, 
     section_yz	       = 384, 
     section_xz         = 384,
 
@@ -139,15 +144,14 @@
 
                   'shf*_xy_av',
                   'ghf*_xy_av',
-                  'us*_xy_av',
                   'rad_net*_xy_av', 'rad_lw_in*_xy_av', 'rad_lw_out*_xy_av', 'rad_sw_in*_xy_av', 'rad_sw_out*_xy_av',
                   'qsws*_xy_av',
                   'tsurf*_xy_av',
 
-                  'pcm_heatrate_av',
 
-
+                  
  / ! end of runtime_parameters namelist
+
 
 !------------------------------------------------------------------------------
 !-- PLANT CANOPY MODEL PARAMETER NAMELIST
@@ -159,6 +163,29 @@
     canopy_drag_coeff = 0.3,
 
  / ! end of plant_canopy_parameters namelist
+
+!------------------------------------------------------------------------------  
+!-- SYNTHETIC TURBULENCE GENERATOR PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/stg_par
+!------------------------------------------------------------------------------ 
+ &stg_par
+
+    use_syn_turb_gen =   .T., 
+    dt_stg_adjust    =   5.0, 
+    dt_stg_call      = 300.0,
+
+ / ! end of stg_par namelist
+
+
+!------------------------------------------------------------------------------  
+!-- OFFLINE NESTING PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/nestofflpar
+!------------------------------------------------------------------------------      
+ &nesting_offl_parameters
+
+    nesting_offline = .T., 
+
+ / ! end of nesting_offl_parameters namelist
 
 
 
@@ -215,36 +242,6 @@
 
  / ! end of urban_surface_parameters namelist
 
-
-
-!-------------------------------------------------------------------------------
-!-- SURFACE OUTPUT PARAMETER NAMELIST
-!   Documentation: http://palm.muk.uni-hannover.de/trac/wiki/doc/app/surface_output_par
-!-------------------------------------------------------------------------------
-
- &surface_data_output_parameters
-
-    averaging_interval_surf = 900.0,
-    to_netcdf = .F.,
-    to_vtk    = .T.,
-
-
-    data_output_surf = 	'shf_av', 'ghf_av',
-		       	'theta_surface_av',
-			'theta1_av',
-			'rad_net_av',
-			'rad_lw_in_av','rad_lw_dif_av','rad_lw_ref_av','rad_lw_res_av',
-			'rad_sw_in_av','rad_sw_dif_av','rad_sw_ref_av','rad_sw_res_av',
-                        'qv1_av', 'usws_av', 'vsws_av', 'qsws_av', 
-                        'waste_heat_av', 'im_hf_av'
-    dt_dosurf	= 5.0,
-    dt_dosurf_av = 900.0,
-
-!    skip_time_dosurf_av = 900.0,
-
- / ! end of surface_data_output_parameters namelist
-
-
 !-------------------------------------------------------------------------------
 !-- INDOOR PARAMETER NAMELIST
 !   Documentation: http://palm.muk.uni-hannover.de/trac/wiki/doc/app/indoorpar
@@ -252,17 +249,11 @@
 
  &indoor_parameters
 
+
     initial_indoor_temperature = 295.15,
 
- / ! end of indoor_paremeters namelist
 
-!-------------------------------------------------------------------------------
-!-- USER PARAMETER NAMELIST
-!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/userpar
-!-------------------------------------------------------------------------------
- &user_parameters
+ / ! end of indoor_parameters namelist
 
-    region = 'Container', 'Reference',
 
- / ! end of user_parameters namelist
 
