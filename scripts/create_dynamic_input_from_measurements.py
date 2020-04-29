@@ -7,6 +7,8 @@ from scipy.interpolate import interp1d, CubicSpline
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import warnings
+import metpy.calc as mpcalc
+from metpy.units import units
 warnings.filterwarnings( 'ignore', category=RuntimeWarning )
 
 os.chdir(os.path.expanduser("~"))
@@ -37,10 +39,10 @@ mpl.rc( 'font', size=def_fs )
 sim_year    = 2017
 sim_month   = 6 # 12
 sim_day     = 9 # 7
-sim_time    = 'evening'
+sim_time    = 'morning'
 datestr     = '{}{:02d}{:02d}'.format( sim_year, sim_month, sim_day )
 
-precursor   = False
+precursor   = False#True
 
 # ------------------------------------------------------------------------------------------------#
 
@@ -76,8 +78,24 @@ if precursor:
   end_hour = start_hour
   start_hour -= 1
   
+#%% Constants
+  
+rd = 287 # J/(kg*K)
+rv = 461.51 # J/(kg*K)  
+  
 #%% Inline functions
 
+# ------------------------------------------------------------------------------------------------#
+# Magnus formula
+def magnus( T ):
+  
+  # T in Kelvins
+  
+  e0 = 611.2 # Pa
+  es = e0 * np.exp( 17.62 * ( T - 273.15 ) / ( T - 29.65 ) )
+  
+  return es  
+  
 # ------------------------------------------------------------------------------------------------#
 # Convert the height to pressure:
 def barometric_formula( z, t0, p0 ):
@@ -86,10 +104,11 @@ def barometric_formula( z, t0, p0 ):
   
   g = 9.81 # m/s2
   cp = 1005.0 # J/kg
-  rd = 287 # J/(kg*K)
+  rd = 287.0 # J/(kg*K)
+  cp_d_rd = cp/rd
   
   # Hydrostatic pressure
-  hyp = p0 * ( ( t0 - ( g/cp ) * z ) / t0 )**( cp/rd )
+  hyp = p0 * ( ( t0 - ( g/cp ) * z ) / t0 )**( cp_d_rd )
   
   return hyp
 
@@ -99,12 +118,11 @@ def specific_humidity_from_dew( dew, p ):
 
   # Give temperatures in Kelvin and p in Pa!
   
-  rd = 287 # J/(kg*K)
+  rd = 287.0 # J/(kg*K)
   rv = 461.51 # J/(kg*K)
-  e0 = 611.2 # Pa
   
   # Magnus formula
-  es = e0 * np.exp( 17.62 * ( dew - 273.15 ) / ( dew - 29.65 ) )
+  es = magnus( dew )
   
   # Specific humidity (kg/kg)
   q = ( rd / rv ) * es / ( p-es )
@@ -112,13 +130,14 @@ def specific_humidity_from_dew( dew, p ):
   return q
 
 # ------------------------------------------------------------------------------------------------#
-# Exner formula to convert temperature to potential temperature and back
+# Exner formula to convert potential temperature to temperature and back
 def exner_function( p ):
   
-  p0 = 101325 # Pa
-  rd = 287
-  cp = 1004
-  exner = ( p / p0 )**( rd/cp )
+  p0 = 101325.0 # Pa
+  rd = 287.0
+  cp = 1005.0
+  rd_d_cp = rd/cp
+  exner = ( p / p0 )**( rd_d_cp )
   
   return exner
   
@@ -138,6 +157,7 @@ fname_in_N03 = '{}/PIDS_DYNAMIC_N03_FRES'.format( pids_folder)
 
 fname_out_wd  = '{}/PIDS_DYNAMIC_wd_kivenlahti{}'.format( pids_folder, suffix  ) 
 fname_out_all = '{}/PIDS_DYNAMIC_all_kivenlahti{}'.format( pids_folder, suffix  )
+fname_out_wdk = '{}/PIDS_DYNAMIC_wd_kumpula{}'.format( pids_folder, suffix  ) 
 fname_out_N03 = '{}/PIDS_DYNAMIC_N03_smear'.format( pids_folder )
 
 fname_kivenlahti = 'source_data/kivenlahti/kivenlahti_mast_{}{}{}.txt'.format( sim_day, sim_month,
@@ -157,21 +177,22 @@ if not precursor:
   dsin_N03 = nc.Dataset( fname_in_N03 )
 
 # Output files:
-dsout_wd  = nc.Dataset( fname_out_wd, "w" )
+dsout_wd  = nc.Dataset( fname_out_wd, "w" ) # kivenlahti
+dsout_wdk = nc.Dataset( fname_out_wdk, "w" ) # kumpula
 dsout_all = nc.Dataset( fname_out_all, "w" )
 if not precursor:
   dsout_N03 = nc.Dataset( fname_out_N03, "w" )
  
 d = 0
 if not precursor:
-  datas = [dsout_wd, dsout_all, dsout_N03]
-  namesout = [fname_out_wd, fname_out_all, fname_out_N03]
+  datas = [dsout_wd, dsout_all, dsout_wdk, dsout_N03]
+  namesout = [fname_out_wd, fname_out_all, fname_out_wdk, fname_out_N03]
 else:
-  datas = [dsout_wd, dsout_all]
-  namesout = [fname_out_wd, fname_out_all]
+  datas = [dsout_wd, dsout_all, dsout_wdk]
+  namesout = [fname_out_wd, fname_out_all, fname_out_wdk]
 
 for dst in datas:
-  if d<2:
+  if d<3:
     src = dsin
     namein = fname_in
   else:
@@ -358,6 +379,7 @@ if sim_month==6:
   kumpula[kumpula[:,3]>23,3] = 0
 
 pressure_smear = np.zeros( ntimesteps )
+wd_smear = np.zeros( ntimesteps )
 
 h = start_hour
 t = 0
@@ -365,8 +387,15 @@ while t < ntimesteps:
   ind = ( kumpula[:,2]==sim_day ) & ( ( ( kumpula[:,3] == h ) & ( kumpula[:,4] < 10 ) ) | \
                                       ( ( kumpula[:,3] == h-1 ) & ( kumpula[:,4] > 49 ) ) )
   pressure_smear[t] = np.nanmean( kumpula[ind,9] )
+  Ui = kumpula[ind,16]
+  WDi = kumpula[ind,23]
+  ui = np.nanmean( -Ui * np.sin( WDi * np.pi/180.0 ) )
+  vi = np.nanmean( -Ui * np.cos( WDi * np.pi/180.0 ) )
+  wd_smear[t] = 270.0 - ( np.arctan2( vi, ui ) * 180.0 / np.pi )
   h += 1
   t += 1
+  
+del Ui, WDi, ui, vi
 
 #%% Read in Kivenlahti data
 
@@ -438,7 +467,7 @@ while t < ntimesteps:
 # Check that the dew point temperature does not exceed the temperature
 for t in range( ntimesteps ):
   for zi in range( 8 ):
-    if Tk[t,zi] < TDk[t,zi]:
+    if 0.98*Tk[t,zi] < TDk[t,zi]:
       print( 'too high dew point temperature: T={:2.1f}C, TD={:2.1f}C --> T={:2.1f}C'\
              ' (0.98*T)'.format( Tk[t,zi], TDk[t,zi], Tk[t,zi] * 0.98 ) )
       TDk[t,zi] = 0.98*Tk[t,zi]
@@ -451,7 +480,7 @@ TDk += 273.15
 # lapse rate of g/cp)
 pk = np.zeros( np.shape( Tk ) )
 for t in range( ntimesteps ):
-  pk[t,:] = barometric_formula( zk, Tk[t,:], pressure_smear[t]*100 )
+  pk[t,:] = barometric_formula( zk, 300, 101325 )
   
 # Derive the potential temperature
 ptk = np.zeros( np.shape( Tk ) )
@@ -461,7 +490,7 @@ for t in range( ntimesteps ):
 # Calculate the specific humidity from the dew point temperature and pressure
 qk = np.copy( uk )
 for t in range( ntimesteps ):
-  qk[t,:] = specific_humidity_from_dew( TDk[t,:], pk[t,:] )
+  qk[t,:] =  mpcalc.specific_humidity_from_dewpoint( TDk[t,:]*units.kelvin, pk[t,:]*units.pascal )
   
   
 #%% Read SMEARIII DMPS data
@@ -524,6 +553,7 @@ w_prof  = np.zeros( [ntimesteps, len( zw )] )
 pt_prof = np.copy( u_prof )
 qv_prof = np.copy( u_prof )
 p_prof = np.copy( u_prof )
+T_prof = np.copy( u_prof )
 
 arrays_out = [u_prof, v_prof, w_prof, pt_prof, qv_prof]
 
@@ -564,48 +594,65 @@ w_prof  = arrays_out[2]
 pt_prof = arrays_out[3]
 qv_prof = arrays_out[4]
 
+
 #%% Plot:
-txts = ['$U~\mathrm{(m~s^{-1})}$','$\mathrm{WD~(^\circ)}$']
-fig1 = plt.figure(figsize=(12/2.54, 8/2.54), dpi=100  )
-fig2 = plt.figure(figsize=(12/2.54, 8/2.54), dpi=100  )
-f = 0
-for figi in [fig1, fig2]:
-  figi.subplots_adjust( hspace=0.4, wspace=0.1, left=0.11, right=0.99, bottom=0.15, top=0.9 ) 
-  figi.text( 0.5, 0.02, txts[f], ha='center', fontsize=def_fs )
-  f += 1
-for t in range(ntimesteps):  
-  zi = np.nanmean( np.nanmean( Z[t,:,:,:], axis=-1 ), axis=-1 )
+plt.close('all')
+
+txts = ['$U~\mathrm{(m~s^{-1})}$','$\mathrm{WD~(^\circ)}$',r'$\theta~\mathrm{(K)}$',
+        '$q$ ($\mathrm{kg~kg^{-1}}$)']
+
+for iv in range(4):
   
-  ax1 = fig1.add_subplot(1,ntimesteps,t+1)
-  U = np.sqrt( u[t,:,:,:]**2+v[t,:,:,:]**2 )
-  minlim = np.percentile( np.percentile( U, 1, axis=-1 ), 1, axis=-1 )
-  maxlim = np.percentile( np.percentile( U, 99, axis=-1 ), 99, axis=-1 )
-  ax1.fill_betweenx( zi, minlim, maxlim, color='k', alpha=0.3 )
-  ax1.plot( np.sqrt( u_prof[t,:]**2 + v_prof[t,:]**2 ), z, '--r*', markevery=10 )
+  fig = plt.figure(figsize=(12/2.54, 8/2.54), dpi=100  )
   
-  ax2 = fig2.add_subplot(1,ntimesteps,t+1)
-  WD = 270.0 - ( np.arctan2( v[t,:,:,:], u[t,:,:,:] ) * 180.0 / np.pi )
- # WD[WD>360] = WD[WD>360]-360
-  minlim = np.percentile( np.percentile( WD, 1, axis=-1 ), 1, axis=-1 )
-  maxlim = np.percentile( np.percentile( WD, 99, axis=-1 ), 99, axis=-1 )
-  ax2.fill_betweenx( zi, minlim, maxlim, color='k', alpha=0.3 )
-  WD = 270.0 - ( np.arctan2( v_prof[t,:], u_prof[t,:] ) * 180.0 / np.pi )
-  WD[WD>360] = WD[WD>360]-360
-  ax2.plot( WD, z, '--r*', markevery=10 )
-  
-  for axi in [ax1, ax2]:
-    axi.set_ylim( 0, 700 )
-    axi.text( 0.15, 0.85, '{}:00'.format( start_hour+t ), transform=axi.transAxes )
-    if t>0:
-      axi.set_yticklabels([])
+  fig.subplots_adjust( hspace=0.4, wspace=0.1, left=0.11, right=0.99, bottom=0.15, top=0.9 ) 
+  fig.text( 0.5, 0.02, txts[iv], ha='center', fontsize=def_fs )
+
+  for t in range(ntimesteps):  
+    zi = np.nanmean( np.nanmean( Z[t,:,:,:], axis=-1 ), axis=-1 )
+    
+    if iv==0:
+      har = np.sqrt( u[t,:,:,:]**2+v[t,:,:,:]**2 )
+      kiv = np.sqrt( u_prof[t,:]**2 + v_prof[t,:]**2 )
+      kio = np.sqrt( uk[t,:]**2 + vk[t,:]**2 )
+    elif iv==1:
+      har = 270.0 - ( np.arctan2( v[t,:,:,:], u[t,:,:,:] ) * 180.0 / np.pi )
+      kiv = 270.0 - ( np.arctan2( v_prof[t,:], u_prof[t,:] ) * 180.0 / np.pi )
+      kio = 270.0 - ( np.arctan2( vk[t,:], uk[t,:] ) * 180.0 / np.pi )
+    elif iv==2:
+      har = pt[t,:,:,:]
+      kiv = pt_prof[t,:]
+      kio = ptk[t,:]
+    elif iv==3:
+      har = q[t,:,:,:]
+      kiv = qv_prof[t,:]
+      kio = qk[t,:]
+      
+    xmax = np.maximum( np.max( kiv ), np.max( har[zi<700,:,:] ) )
+    xmin = np.minimum( np.min( kiv ), np.min( har[zi<700,:,:] ) )
+    
+    ax = fig.add_subplot(1,ntimesteps,t+1)
+    for i in range( np.shape( har )[-1] ):
+      for j in range( np.shape( har )[-2] ):
+        ax.plot( har[:,j,i], zi, 'k-', alpha=0.2 )
+    ax.plot( kiv, z, '--r' )
+    ax.plot( kio, zk, '*b' )
+    
+    ax.set_ylim( 0, 700 )
+    if iv != 1:
+      ax.set_xlim( xmin, xmax )
     else:
-      axi.set_ylabel('$z$ (m)', labelpad=0)
-  ax1.set_xlim( -1, 5 )
-  ax1.set_xticks( np.arange( 0,5,2 ) )
-  ax2.set_xlim( 0, 415 )
-  ax2.set_xticks( np.arange( 0, 361, 90 ) )
-  for figi in [fig1, fig2]:
-    figi.legend(['Measurements','Harmonie'], loc='upper center', ncol=2)
+      ax.set_xlim( 0, 415 )
+      ax.set_xticks( np.arange( 0, 361, 90 ) )
+      ax.set_xticklabels( ['','90','','270',''] )
+    ax.text( 0.15, 0.85, '{}:00'.format( start_hour+t ), transform=ax.transAxes )
+    if t>0:
+      ax.set_yticklabels([])
+    else:
+      ax.set_ylabel('$z$ (m)', labelpad=0)
+    
+    #fig.legend(['Measurements','Harmonie'], loc='upper center', ncol=2)
+plt.show()
 
 #%% Create arrays
     
@@ -618,8 +665,15 @@ v_palm  = np.zeros( [ ntimesteps, nz,   ny,   nx+1], dtype=float )
 w_palm  = np.zeros( [ ntimesteps, nz-1, ny+1, nx+1], dtype=float )
 pt_palm = np.zeros( [ ntimesteps, nz,   ny+1, nx+1], dtype=float )
 qv_palm = np.zeros( [ ntimesteps, nz,   ny+1, nx+1], dtype=float )
-u2_palm  = np.copy( u_palm )
-v2_palm  = np.copy( v_palm )
+u_palm_kivenlahti_wd  = np.copy( u_palm )
+v_palm_kivenlahti_wd  = np.copy( v_palm )
+u_palm_kumpula_wd  = np.copy( u_palm )
+v_palm_kumpula_wd  = np.copy( v_palm )
+
+
+# ------------------------------------------------------------------------------------------------#
+
+# All meteorological data:
 
 arrays_out = [u_palm, v_palm, pt_palm, qv_palm]
 arrays_in  = [u_prof, v_prof, pt_prof, qv_prof]
@@ -641,9 +695,11 @@ v_palm  = arrays_out[1]
 pt_palm = arrays_out[2]
 qv_palm = arrays_out[3]
 
+# ------------------------------------------------------------------------------------------------#
 
-arrays_out = [u2_palm, v2_palm]
-arrays_in  = [u_prof, v_prof  ]
+# Only wind direction (use Kivenlahti data):
+
+arrays_out = [u_palm_kivenlahti_wd, v_palm_kivenlahti_wd]
 zs         = [z,      z       ]
 nys        = [ny+1,   ny      ]
 nxs        = [nx,     nx+1    ]
@@ -661,7 +717,7 @@ for a in range(  len( arrays_out ) ):
   arrays_out[a][:,:,0,:]  = dsout_wd['ls_forcing_south_{}'.format( names[a] )][:].data
   arrays_out[a][:,-1,:,:] = dsout_wd['ls_forcing_top_{}'.format( names[a] )][:].data
 
-print('Only wind direction: both u & v')
+print('Only wind direction (Kivenlahti): both u & v')
 for t in range( ntimesteps ):
   print('   t={}'.format( t ) )
   wdh = wdk[t,:]
@@ -670,63 +726,118 @@ for t in range( ntimesteps ):
       Uh = np.sqrt( arrays_out[0][t,:,j,i]**2 + arrays_out[1][t,:,j,i]**2 )
       uh2 = -Uh * np.sin( wdh * np.pi/180.0 )
       vh2 = -Uh * np.cos( wdh * np.pi/180.0 )
+      wdi = 270.0 - ( np.arctan2( vh2, uh2 ) * 180.0 / np.pi )
       arrays_out[0][t,:,j,i] = uh2
       arrays_out[1][t,:,j,i] = vh2
-
+      arrays_out[0][t,-1,j,i] = uh2[-1]
+      arrays_out[1][t,-1,j,i] = vh2[-1]
+      
+      
 arrays_out[0][:,:,-1,:] = arrays_out[0][:,:,-2,:]
-arrays_out[0][:,:,-2,:] = 0
-arrays_out[0][:,:,:,-1] = arrays_out[0][:,:,:,-2]
-arrays_out[0][:,:,:,-2] = 0
+arrays_out[1][:,:,:,-1] = arrays_out[1][:,:,:,-2]
     
-u2_palm  = arrays_out[0]
-v2_palm  = arrays_out[1]
+u_palm_kivenlahti_wd  = arrays_out[0]
+v_palm_kivenlahti_wd  = arrays_out[1]
 
-del arrays_out
+del arrays_out, uh2, vh2
+
+# ------------------------------------------------------------------------------------------------#
+
+# Only wind direction (use Kumpula data):
+
+arrays_out = [u_palm_kumpula_wd, v_palm_kumpula_wd]
+zs         = [z,      z       ]
+nys        = [ny+1,   ny      ]
+nxs        = [nx,     nx+1    ]
+names      = ['u',    'v'     ]
+
+# Copy data from PIDS_DYNAMIC
+for a in range(  len( arrays_out ) ):
+  arrays_out[a][:,:,:,0]  = dsout_wdk['ls_forcing_left_{}'.format( names[a] )][:].data
+  arrays_out[a][:,:,:,-1] = dsout_wdk['ls_forcing_right_{}'.format( names[a] )][:].data
+  arrays_out[a][:,:,:,-2] = dsout_wdk['ls_forcing_right_{}'.format( names[a] )][:].data
+  arrays_out[a][:,:,-1,:] = dsout_wdk['ls_forcing_north_{}'.format( names[a] )][:].data
+  arrays_out[a][:,:,-2,:] = dsout_wdk['ls_forcing_north_{}'.format( names[a] )][:].data
+  arrays_out[a][:,:,0,:]  = dsout_wdk['ls_forcing_south_{}'.format( names[a] )][:].data
+  arrays_out[a][:,-1,:,:] = dsout_wdk['ls_forcing_top_{}'.format( names[a] )][:].data
+
+print('Only wind direction (Kumpula): both u & v')
+for t in range( ntimesteps ):
+  print('   t={}'.format( t ) )
+  wdk = u_prof[t,:]*0.0 + wd_smear[t]
+  wdh = wdk
+  for j in range( ny ):
+    for i in range( nx ):
+      Uh = np.sqrt( arrays_out[0][t,:,j,i]**2 + arrays_out[1][t,:,j,i]**2 )
+      uh2 = -Uh * np.sin( wdh * np.pi/180.0 )
+      vh2 = -Uh * np.cos( wdh * np.pi/180.0 )
+      wdi = 270.0 - ( np.arctan2( vh2, uh2 ) * 180.0 / np.pi )
+      arrays_out[0][t,:,j,i] = uh2
+      arrays_out[1][t,:,j,i] = vh2
+      arrays_out[0][t,-1,j,i] = uh2[-1]
+      arrays_out[1][t,-1,j,i] = vh2[-1]
+      
+arrays_out[0][:,:,-1,:] = arrays_out[0][:,:,-2,:]
+arrays_out[1][:,:,:,-1] = arrays_out[1][:,:,:,-2]
+    
+u_palm_kumpula_wd  = arrays_out[0]
+v_palm_kumpula_wd  = arrays_out[1]
+
+del arrays_out, uh2, vh2
 
 #%% Replace meteorological data in PIDS_DYNAMIC with Kivenlahti measurements
 
-names    = ['u',    'v',     'w',    'pt',    'qv'    ]
-arrays      = [ u_palm, v_palm,  w_palm, pt_palm, qv_palm]
-arrays2     = [ u2_palm, v2_palm ]
-arrays_prof = [ u_prof, v_prof,  w_prof, pt_prof, qv_prof]
+names             = ['u',    'v',     'w',    'pt',    'qv'    ]
+arrays            = [ u_palm, v_palm,  w_palm, pt_palm, qv_palm]
+arrays_kivenlahti = [ u_palm_kivenlahti_wd, v_palm_kivenlahti_wd ]
+arrays_kumpula    = [ u_palm_kumpula_wd, v_palm_kumpula_wd ]
+arrays_prof       = [ u_prof, v_prof,  w_prof, pt_prof, qv_prof]
 
 # init_atmosphere_XX (z/zw)
 for a in range( len( arrays ) ):
   dsout_all['init_atmosphere_{}'.format( names[a] )][:] = arrays_prof[a][0,:]
   if a<2:
-    dsout_wd['init_atmosphere_{}'.format( names[a] )][:] = arrays_prof[a][0,:]
+    init_kivenlahti = np.nanmean( arrays_kivenlahti[a][0,:,:,0],  axis=-1 )
+    dsout_wd['init_atmosphere_{}'.format( names[a] )][:] = init_kivenlahti
+    init_kumpula = np.nanmean( arrays_kumpula[a][0,:,:,0],  axis=-1 )
+    dsout_wdk['init_atmosphere_{}'.format( names[a] )][:] = init_kumpula
 
 # ls_forcing_left_XX (time,z/zw,y/yv)
 for a in range( len( arrays ) ):
   dsout_all['ls_forcing_left_{}'.format(names[a] )][:] = arrays[a][:,:,:,0]
   if a<2:
-    dsout_wd['ls_forcing_left_{}'.format(names[a] )][:] = arrays2[a][:,:,:,0]
+    dsout_wd['ls_forcing_left_{}'.format(names[a] )][:] = arrays_kivenlahti[a][:,:,:,0]
+    dsout_wdk['ls_forcing_left_{}'.format(names[a] )][:] = arrays_kumpula[a][:,:,:,0]
   
 # ls_forcing_right_XX (time,z/zw,y/yv)
 for a in range( len( arrays ) ):
   dsout_all['ls_forcing_right_{}'.format(names[a] )][:] = arrays[a][:,:,:,-1]
   if a<2:
-    dsout_wd['ls_forcing_right_{}'.format(names[a] )][:] = arrays2[a][:,:,:,-1]
+    dsout_wd['ls_forcing_right_{}'.format(names[a] )][:] = arrays_kivenlahti[a][:,:,:,-1]
+    dsout_wdk['ls_forcing_right_{}'.format(names[a] )][:] = arrays_kumpula[a][:,:,:,-1]
 
 # ls_forcing_north_XX (time,z/zw,x/xu)
 for a in range( len( arrays ) ):
   dsout_all['ls_forcing_north_{}'.format(names[a] )][:] = arrays[a][:,:,-1,:]
   if a<2:
-    dsout_wd['ls_forcing_north_{}'.format(names[a] )][:] = arrays2[a][:,:,-1,:]
+    dsout_wd['ls_forcing_north_{}'.format(names[a] )][:] = arrays_kivenlahti[a][:,:,-1,:]
+    dsout_wd['ls_forcing_north_{}'.format(names[a] )][:] = arrays_kumpula[a][:,:,-1,:]
 
 # ls_forcing_south_XX (time,z/zw,x/xu)
 for a in range( len( arrays ) ):
   dsout_all['ls_forcing_south_{}'.format(names[a] )][:] = arrays[a][:,:,0,:]
   if a<2:
-    dsout_wd['ls_forcing_south_{}'.format(names[a] )][:] = arrays2[a][:,:,0,:]
+    dsout_wd['ls_forcing_south_{}'.format(names[a] )][:] = arrays_kivenlahti[a][:,:,0,:]
+    dsout_wdk['ls_forcing_south_{}'.format(names[a] )][:] = arrays_kumpula[a][:,:,0,:]
 
 # ls_forcing_top_XX (time,y/yv,x/xu)
 for a in range( len( arrays ) ):
   dsout_all['ls_forcing_top_{}'.format(names[a] )][:] = arrays[a][:,-1,:,:]
   if a<2:
-    dsout_wd['ls_forcing_top_{}'.format(names[a] )][:] = arrays2[a][:,-1,:,:]
+    dsout_wd['ls_forcing_top_{}'.format(names[a] )][:] = arrays_kivenlahti[a][:,-1,:,:]
+    dsout_wdk['ls_forcing_top_{}'.format(names[a] )][:] = arrays_kumpula[a][:,-1,:,:]
 
-del arrays, arrays2
+del arrays, arrays_kivenlahti
 
   
 #%% Replace size distribution data in PIDS_DYNAMIC_N03 with SMEARIII DMPS data
@@ -758,5 +869,54 @@ if not precursor:
 
 dsout_all.close()
 dsout_wd.close()
+dsout_wdk.close()
 if not precursor:
   dsout_N03.close()
+  
+  
+# #%% Plot
+  
+# names             = ['u',    'v',     'w',    'pt',    'qv'    ]
+# arrays_kivenlahti = [ u_palm_kivenlahti_wd, v_palm_kivenlahti_wd ]
+# arrays_kumpula    = [ u_palm_kumpula_wd, v_palm_kumpula_wd ]
+# arrays_prof       = [ u_prof, v_prof,  w_prof, pt_prof, qv_prof]
+
+# plt.close('all')  
+
+# t = 0
+# for arrays in [arrays_kivenlahti, arrays_kumpula]:
+#   for a in range( 2 ):
+#     fig = plt.figure()
+#     fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
+    
+#     if a==0:
+#       vmin=0
+#       vmax=5
+#     else:
+#       vmin=0
+#       vmax=0.5
+#     # left
+#     ax1 = fig.add_subplot(1,5,1)
+#     ax1.imshow( arrays[a][t,:,:,0], vmin=vmin, vmax=vmax, cmap='nipy_spectral' )
+#     ax1.set_title('left '+ names[a])
+#     ax1.invert_yaxis()
+    
+#     ax2 = fig.add_subplot(1,5,2)
+#     ax2.imshow( arrays[a][t,:,:,-1], vmin=vmin, vmax=vmax, cmap='nipy_spectral' )
+#     ax2.set_title('right '+ names[a])
+#     ax2.invert_yaxis()
+    
+#     ax3 = fig.add_subplot(1,5,3)
+#     ax3.imshow( arrays[a][t,:,-1,:], vmin=vmin, vmax=vmax, cmap='nipy_spectral' )
+#     ax3.set_title('north '+ names[a])
+#     ax3.invert_yaxis()
+    
+#     ax4 = fig.add_subplot(1,5,4)
+#     ax4.imshow( arrays[a][t,:,0,:], vmin=vmin, vmax=vmax, cmap='nipy_spectral' )
+#     ax4.set_title('south '+ names[a])
+#     ax4.invert_yaxis()
+    
+#     ax5 = fig.add_subplot(1,5,5)
+#     ax5.imshow( arrays[a][t,-1,:,:], vmin=vmin, vmax=vmax, cmap='nipy_spectral' )
+#     ax5.set_title('top '+ names[a])
+#     ax5.invert_yaxis()
