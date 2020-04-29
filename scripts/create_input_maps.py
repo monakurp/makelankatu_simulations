@@ -365,7 +365,7 @@ number_fracs[0,:] += rpb_hietikko
 emission_mass_fracs = np.zeros( [len( ncat ), ncc], dtype = float )
 emission_mass_fracs[0,0] = np.mean( emission[' BC'] / emission[' PM'] )
 emission_mass_fracs[0,1] = np.mean( emission[' OC'] / emission[' PM'] )
-emission_mass_fracs[0,2] = 1.0 - np.sum( emission_mass_fracs[0:-1] )
+emission_mass_fracs[0,2] = 1.0 - np.sum( emission_mass_fracs[0,0:-1] )
 
 #dmid = np.sqrt( bin_limits[0:-1]*bin_limits[1::] )
 
