@@ -34,10 +34,10 @@
 !
 !-- Initialization
 !------------------------------------------------------------------------------
-    initializing_actions = 'read_restart_data',   !'set_constant_profiles', or 'inifor', 
+    initializing_actions = 'set_constant_profiles',   !'set_constant_profiles', or 'inifor', 
                                                       ! or both (met. from inifor, chem constant profiles)
 
-    origin_date_time     = '2017-06-09 06:00:00 +03',
+    origin_date_time     = '2017-06-09 07:00:00 +03',
 
 !
 !-- Statistics
@@ -47,12 +47,11 @@
 !
 !-- Wall/soil spinup
 !------------------------------------------------------------------------------    
-    spinup_time          = 86400.0,
-    spinup_pt_mean       = 285.15,         ! Jani estimated 
-    spinup_pt_amplitude  = 3.0,            ! give a diurnal cycle from 11 - 14 °C
+    spinup_time          = 3600.0,
+    spinup_pt_mean       = 284.55,         ! Jani estimated 
+    spinup_pt_amplitude  = 8.0,            ! give a diurnal cycle from 9.6 - 15.4 °C
     dt_spinup            = 120.0,
     data_output_during_spinup = .F.,
-
 
 !
 !-- Boundary conditions
@@ -155,7 +154,7 @@
 !------------------------------------------------------------------------------
  &plant_canopy_parameters
 
-    canopy_mode = 'read_from_file',
+    canopy_mode = 'read_from_file_3d',
     canopy_drag_coeff = 0.3,
 
  / ! end of plant_canopy_parameters namelist
@@ -213,7 +212,7 @@
     usm_material_model     = .T.,
     usm_wall_mod = .T.,
 
- / ! end of urban_surface_parameters namelist
+ / ! end of urban_surface_par namelist
 
 
 
@@ -224,7 +223,7 @@
 
  &surface_data_output_parameters
 
-    averaging_interval_surf = 900.0,
+    averaging_interval_surf = 1800.0,
     to_netcdf = .F.,
     to_vtk    = .T.,
 
@@ -238,9 +237,9 @@
                         'qv1_av', 'usws_av', 'vsws_av', 'qsws_av', 
                         'waste_heat_av', 'im_hf_av'
     dt_dosurf	= 5.0,
-    dt_dosurf_av = 900.0,
+    dt_dosurf_av = 1800.0,
 
-!    skip_time_dosurf_av = 900.0,
+    skip_time_dosurf_av = 900.0,
 
  / ! end of surface_data_output_parameters namelist
 

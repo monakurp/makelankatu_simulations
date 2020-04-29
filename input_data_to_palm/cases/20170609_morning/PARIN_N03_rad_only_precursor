@@ -7,13 +7,13 @@
 !
 !-- Grid
 !------------------------------------------------------------------------------
-    nx                   = 767,
-    ny                   = 767,
-    nz                   =  96,
+    nx                   = 575,
+    ny                   = 575,
+    nz                   = 144,
 
-    dx                   = 3.0,
-    dy                   = 3.0,
-    dz                   = 3.0,
+    dx                   = 1.0,
+    dy                   = 1.0,
+    dz                   = 1.0,
  
 !
 !-- Numerics
@@ -24,6 +24,7 @@
     momentum_advec       = 'ws-scheme', 
     scalar_advec         = 'ws-scheme', 
     conserve_volume_flow = .F.,
+    monotonic_limiter_z  = .T.,
 
 !
 !-- Mode
@@ -34,7 +35,7 @@
 !
 !-- Initialization
 !------------------------------------------------------------------------------
-    initializing_actions = 'read_restart_data',   !'set_constant_profiles', or 'inifor', 
+    initializing_actions = 'set_constant_profiles',   !'set_constant_profiles', or 'inifor', 
                                                       ! or both (met. from inifor, chem constant profiles)
 
     origin_date_time     = '2017-06-09 06:00:00 +03',
@@ -42,7 +43,7 @@
 !
 !-- Statistics
 !------------------------------------------------------------------------------
-    statistic_regions    = 2,
+    statistic_regions    = 3,
 
 !
 !-- Wall/soil spinup
@@ -52,7 +53,6 @@
     spinup_pt_amplitude  = 3.0,            ! give a diurnal cycle from 11 - 14 °C
     dt_spinup            = 120.0,
     data_output_during_spinup = .F.,
-
 
 !
 !-- Boundary conditions
@@ -84,7 +84,7 @@
 !
 !-- Run steering
 !------------------------------------------------------------------------------
-    end_time              = 8100.0, ! 2*3600s + 15*60s
+    end_time              = 3600.0, ! 3600 (precursor) 2*3600s + 15*60s
     create_disturbances   = .T.,
     netcdf_data_format    = 4,
 
@@ -107,25 +107,27 @@
                             'w',  'w*2',
                             'rho',
                             'theta', 'theta*2', 'wtheta', 'w*theta*', 'w"theta"',
-                            'thetav', 'wthetav', 'w*thetav*', 'w"thetav"', !thetav*2 doesn't exist
+                            'thetav', 'wthetav', 'w*thetav*', 'w"thetav"',
                             'w*u*u*:dz', 'w*p*:dz',
                             'q',  'q*2',
                             'e', 'e*', 
 !
 !-- 2D/3D output settings
 !------------------------------------------------------------------------------
-    do3d_at_begin      = .F., 
-    do2d_at_begin      = .F.,
+    do3d_at_begin      = .T., 
+    do2d_at_begin      = .T.,
 
-    dt_data_output     = 300.0, 
-    dt_data_output_av  = 600.0,
-    averaging_interval = 600.0,
-    dt_averaging_input =   1.0, 
+    dt_data_output     =  300.0, 
+    dt_data_output_av  =  600.0,
+    averaging_interval =  600.0,
+    dt_averaging_input =    1.0, 
 
-    section_xy         = 7, 14, 20, 27, 33, 50, 67, 83, 
-    section_yz	       = 384, 
-    section_xz         = 384,
+    section_xy         = 10, 20, 30, 40, 50, 60, 80,
+    section_yz	       = 288, 
+    section_xz         = 288,
 
+!
+!-- 3D data
     data_output = 'u_xy_av', 'u_xz_av', 'u_yz_av',
                   'v_xy_av', 'v_xz_av', 'v_yz_av',
                   'w_xy_av', 'w_xz_av', 'w_yz_av',
@@ -144,21 +146,55 @@
                   'qsws*_xy_av',
                   'tsurf*_xy_av',
 
-                  'pcm_heatrate_av',
+!
+!-- Mask output
+!------------------------------------------------------------------------------
 
+    dt_domask          = 300.0, ! mask 1: wind field near the surface
+                           0.1, ! mask 2: to compare with metek
+                           0.1, ! mask 3: to compare with metek 
+
+    skip_time_domask   = 300.0, 900.0, 900.0,
+
+!
+!-- Excluding the border areas
+    data_output_masks(1,:) = 'u_av', 'v_av', 'w_av', 'theta_av', 
+
+    mask_x_loop(1,:)   = 60.0, 520.0, 1.0,
+    mask_y_loop(1,:)   = 60.0, 520.0, 1.0,
+    mask_k_over_surface(1,:) = 1, 2, 4,
+
+!
+!-- North-Western corner of measurement container
+    data_output_masks(2,:) = 'u', 'v', 'w', 'theta',
+
+    mask_x_loop(2,:)   = 309.0, 312.0, 1.0,
+    mask_y_loop(2,:)   = 176.0, 179.0, 1.0,
+    mask_z_loop(2,:)   =  26.5,  29.5, 1.0,
+
+!
+!-- South-Eastern corner of measurement container
+    data_output_masks(3,:) = 'u', 'v', 'w', 'theta',
+
+    mask_x_loop(3,:)   = 313.0, 316.0, 1.0,
+    mask_y_loop(3,:)   = 171.0, 174.0, 1.0,
+    mask_z_loop(3,:)   =  26.5,  29.5, 1.0,
 
  / ! end of runtime_parameters namelist
+
 
 !------------------------------------------------------------------------------
 !-- PLANT CANOPY MODEL PARAMETER NAMELIST
 !   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/canpar
 !------------------------------------------------------------------------------
  &plant_canopy_parameters
-
+ 
     canopy_mode = 'read_from_file',
     canopy_drag_coeff = 0.3,
-
+    
  / ! end of plant_canopy_parameters namelist
+
+
 
 
 
@@ -200,6 +236,10 @@
     deep_soil_temperature  = 275.0,
     
 
+!    dz_soil		   = 0.035, 0.175, 0.64, 1.945, ! levels for T and M, m
+!    soil_temperature       = 281.98, 281.06, 278.44, 275.36, ! temperature, K
+!    soil_moisture          = 0.317,   0.343,  0.360,  0.428,  ! volumetric water content, m3/m3
+!    root_fraction          = 0.49, 0.26, 0.25, 0.0,
 
  / ! end of land_surface_parameters namelist
 
@@ -221,6 +261,7 @@
 !-- SURFACE OUTPUT PARAMETER NAMELIST
 !   Documentation: http://palm.muk.uni-hannover.de/trac/wiki/doc/app/surface_output_par
 !-------------------------------------------------------------------------------
+
 
  &surface_data_output_parameters
 
@@ -244,7 +285,6 @@
 
  / ! end of surface_data_output_parameters namelist
 
-
 !-------------------------------------------------------------------------------
 !-- INDOOR PARAMETER NAMELIST
 !   Documentation: http://palm.muk.uni-hannover.de/trac/wiki/doc/app/indoorpar
@@ -254,15 +294,18 @@
 
     initial_indoor_temperature = 295.15,
 
- / ! end of indoor_paremeters namelist
+ / ! end of indoor_parameters namelist
 
 !-------------------------------------------------------------------------------
-!-- USER PARAMETER NAMELIST
+!-- USER-DEFINED PARAMETER NAMELIST
 !   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/userpar
 !-------------------------------------------------------------------------------
  &user_parameters
 
-    region = 'Container', 'Reference',
-
+    region = 'Container', 'Street', 'Reference',
+!    salsa_dynamic_background_concentrations = .F.,  ! forced offline nesting
+!    salsa_static_background_concentrations  = .T.,  ! read from PIDS_DYNAMIC
+    
  / ! end of user_parameters namelist
+
 
