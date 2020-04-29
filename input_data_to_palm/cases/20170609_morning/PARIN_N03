@@ -88,9 +88,9 @@
 !-- Profile output settings
 !------------------------------------------------------------------------------
     skip_time_dopr        =   0.0,
-    dt_dopr               = 900.0,
-    averaging_interval_pr = 900.0,
-    dt_averaging_input_pr =   1.0,
+    dt_dopr               =   1.0, !900.0,
+    averaging_interval_pr =   1.0, !900.0,
+    dt_averaging_input_pr =   0.0, !1.0,
 
     data_output_pr        = 'u',  'u*2',  'wu',  'w*u*',  'w"u"',
                             'v',  'v*2',  'wv',  'w*v*',  'w"v"',
@@ -133,10 +133,10 @@
     dt_domask          = 300.0, ! mask 1: wind field near the surface
                            0.1, ! mask 2: to compare with metek
                            0.1, ! mask 3: to compare with metek 
-                         300.0, ! mask 4: avg aerosol data
-                         300.0, ! mask 5: avg gas data
-                         300.0, ! mask 6: "profile" data (behind the container)
-                         300.0, ! mask 7: "profile" data (on the other side)
+                          60.0, ! mask 4: avg aerosol data
+                          60.0, ! mask 5: avg gas data
+                          60.0, ! mask 6: "profile" data (behind the container)
+                          60.0, ! mask 7: "profile" data (on the other side)
                            1.0, ! mask 8: temporal surface data
                            1.0, ! mask 9: temporal profile data
 
@@ -200,7 +200,7 @@
 
     mask_x_loop(4,:)   = 60.0, 520.0, 1.0,
     mask_y_loop(4,:)   = 60.0, 520.0, 1.0,
-    mask_k_over_surface(4,:) = 1, 2, 4,
+    mask_k_over_surface(4,:) = 1, 2, 3, 4,
 
 !
 !-- Terrain-following gas data
@@ -220,7 +220,7 @@
 
     mask_x_loop(5,:)   = 60.0, 520.0, 1.0,
     mask_y_loop(5,:)   = 60.0, 520.0, 1.0,
-    mask_k_over_surface(5,:) = 1, 2, 4,
+    mask_k_over_surface(5,:) = 1, 2, 3, 4,
 
 !
 !-- "Profiles" in front of the container
@@ -272,7 +272,7 @@
 
     mask_x_loop(8,:)   = 60.0, 520.0, 1.0,
     mask_y_loop(8,:)   = 60.0, 520.0, 1.0,
-    mask_k_over_surface(8,:) = 1, 2, 4,
+    mask_k_over_surface(8,:) = 3,
 
 !
 !-- Temporal "profiles" in front of the container

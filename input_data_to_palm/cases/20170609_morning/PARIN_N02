@@ -87,9 +87,9 @@
 !-- Profile output settings
 !------------------------------------------------------------------------------
     skip_time_dopr        =   0.0,
-    dt_dopr               = 900.0,
-    averaging_interval_pr = 900.0,
-    dt_averaging_input_pr =   1.0,
+    dt_dopr               =   1.0, !900.0,
+    averaging_interval_pr =   1.0, !900.0,
+    dt_averaging_input_pr =   0.0, !1.0,
 
     data_output_pr        = 'u',  'u*2',  'wu',  'w*u*',  'w"u"',
                             'v',  'v*2',  'wv',  'w*v*',  'w"v"',
