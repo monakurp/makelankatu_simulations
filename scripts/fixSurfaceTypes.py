@@ -134,17 +134,6 @@ R5[idx] = -127
 idx = (R1 < 1) & (R2 < 1) & (R3 < 1) & (R4 < 1)
 R2[idx] = 1
 
-# Give an individual id for each building
-Rmod = np.copy( R7 )
-Rmod[Rmod>0] = 1
-Rmod[Rmod<=0] = 0 # snm.label functions with 0s and 1s
-labeled_array, num_features = snm.label( Rmod )
-if np.sum( labeled_array < 0 ) > 0:
-  print('Negative building_id! Exiting.')
-  sys.exit(1)
-labeled_array[labeled_array==0] = -9999
-R7 = labeled_array.astype(int)
-del Rmod, labeled_array, num_features
 
 # PIDS classification-----------------------------
 # User can make their own changes to these conditions as they see fit.
