@@ -9,9 +9,13 @@ from mapTools import *
 Description: Subtract a raster tile from another raster tile.
 
 
-Author: Mona Kurppa
-        mona.kurppa@helsinki.fi
-        University of Helsinki
+Authors: Mona Kurppa
+         mona.kurppa@helsinki.fi
+         University of Helsinki
+
+         Jani Strömberg
+         jani.stromberg@helsinki.fi
+         University of Helsinki
 '''
 
 #==========================================================#
@@ -48,18 +52,21 @@ ntp       = args.negative_to_positive
 filenames = [filein, filesub, filemask, fileout]
 
 # Read in the data. The output raster will inherit Rdict1 properties not shown here.
+# Raster that will me modified:
 Rdict = readNumpyZTile( filein )
 R     = Rdict['R']
 Rdims = np.array( np.shape( R ) )
 ROrig = Rdict['GlobOrig']
 dPx   = Rdict['dPx']
 
+# Raster that will be substracted from Rdict:
 Rdict_sub = readNumpyZTile( filesub )
 R_sub     = Rdict_sub['R']
 Rdims_sub = np.array( np.shape( R_sub ) )
 ROrig_sub = Rdict_sub['GlobOrig']
 dPx_sub   = Rdict_sub['dPx']
 
+# Raster that will be applied as a mask (optional):
 if ( filemask is None ):
   R_mask     = 0 * np.copy(R) + 1
   Rdims_mask = np.copy( Rdims )
@@ -72,6 +79,7 @@ else:
   ROrig_mask = Rdict_mask['GlobOrig']
   dPx_mask   = Rdict_mask['dPx']
 
+# Check that the origos match
 if( ( ROrig == ROrig_sub ).all() and ( ROrig == ROrig_mask ).all() ):
   print(' Excellent! The origos match.')
 else:
@@ -81,7 +89,8 @@ else:
     print('{}: {}'.format( filenames[i], origo ) )
     i += 1
   sys.exit(1)
-  
+
+# Check that the dimensions match
 if( ( Rdims == Rdims_sub ).all() and ( Rdims == Rdims_mask ).all() ):
   print(' Excellent! The dimensions match.')
 else:
@@ -91,12 +100,12 @@ else:
     print('{}: {}'.format( filenames[i], dims ) )
     i += 1
   sys.exit(1)
-  
+
 # Substract the raster to be subtracted from the original raster
 R_mod = R - R_sub
 
 # Create a minimum value mask and filter
-min_lim_mask = R < min_lim 
+min_lim_mask = R < min_lim
 R_mod[min_lim_mask] = 0
 
 # Use the mask file to further filter the original raster
@@ -116,6 +125,7 @@ Rdict_sub['R'] = R_sub
 Rdict_mask['R'] = R_mask
 
 
+# Save Rdict
 if ( not printOnly ):
   if ( fileout is None ):
     print('Name of the output .npz-file missing! Exiting.')
@@ -126,6 +136,7 @@ if ( not printOnly ):
   if ntp:
     saveTileAsNumpyZ( '{}_mod.npz'.format( filesub[0:-4] ), Rdict_sub )
 
+# Plot the rasters
 if ( printOn or printOnly ):
   i = 0
   for Ri in [R, R_sub, R_mask, R_mod]:

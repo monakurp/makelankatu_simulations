@@ -2,109 +2,100 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib as mpl
-
-def_fs = 11
-
-mpl.rcParams['lines.linewidth'] = 2
-mpl.rcParams['axes.linewidth'] = 1
-mpl.rcParams['axes.labelsize'] = def_fs
-mpl.rcParams['ytick.labelsize'] = def_fs
-mpl.rcParams['xtick.labelsize'] = def_fs
-mpl.rcParams['grid.linewidth'] = 1
-mpl.rcParams['lines.markersize'] = 4.5
-mpl.rcParams['legend.fontsize'] = def_fs
-#mpl.rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
-#mpl.rc('text', usetex=True)
 
 # - - - - - - - - - - - - - - - - - - - - - - - #
-def define_bins( nbin, reglim ):
+def define_bins(nbin, reglim):
   """
+  Define the geometric mean diameters for the sectional aerosol size distribution
+
   Input:
     nbin = number of bins per subrange (e.g. [2,8])
     reglim = subrange diameter limits (m) (e.g. [2.5e-9, 10.0e-9, 2.5e-6])
-    
+
   Output:
     dmid = geometric mean diameter per bin (m)
     bin_limits = bin limits of the sectional representation (m)
   """
 
-  nbins = np.sum( nbin ) # = subrange 1 + subrange 2
+  # Total number of bins
+  nbins = np.sum(nbin) # = subrange 1 + subrange 2
 
-  # Log-normal to sectional
-  
-  vlolim = np.zeros( nbins )
-  vhilim = np.zeros( nbins )
-  dmid   = np.zeros( nbins )
-  bin_limits = np.zeros( nbins )
+  # Initialise arrays
+  vlolim = np.zeros(nbins)
+  vhilim = np.zeros(nbins)
+  dmid   = np.zeros(nbins)
+  bin_limits = np.zeros(nbins)
 
-  # Sectional bin limits
+  # Define the geometric mean diameters
+  # subrange 1:
   ratio_d = reglim[1] / reglim[0]
-  for b in range( nbin[0] ):
-    vlolim[b] = np.pi / 6.0 * ( reglim[0] * ratio_d **( float(b) / nbin[0] ) )**3
-    vhilim[b] = np.pi / 6.0 * ( reglim[0] * ratio_d **( float(b+1) / nbin[0] ) )**3
-    dmid[b] = np.sqrt( ( 6.0 * vhilim[b] / np.pi )**0.33333333 * \
-                       ( 6.0 * vlolim[b] / np.pi )**0.33333333 )
-
+  for b in range(nbin[0]):
+    vlolim[b] = np.pi / 6.0 * (reglim[0] * ratio_d **(float(b) / nbin[0]))**3
+    vhilim[b] = np.pi / 6.0 * (reglim[0] * ratio_d **(float(b+1) / nbin[0]))**3
+    dmid[b] = np.sqrt((6.0 * vhilim[b] / np.pi)**0.33333333 * \
+                      (6.0 * vlolim[b] / np.pi )**0.33333333)
+  # subrange 2:
   ratio_d = reglim[2] / reglim[1]
-  for b in np.arange( nbin[0], np.sum( nbin ),1 ):
+  for b in np.arange(nbin[0], nbins,1):
     c = b-nbin[0]
-    vlolim[b] = np.pi / 6.0 * ( reglim[1] * ratio_d ** ( float(c) / nbin[1] ) )**3
-    vhilim[b] = np.pi / 6.0 * ( reglim[1] * ratio_d ** ( float(c+1) / nbin[1] ) ) ** 3
-    dmid[b] = np.sqrt( ( 6.0 * vhilim[b] / np.pi )**0.33333333 * \
-                       ( 6.0 * vlolim[b] / np.pi )**0.33333333 )
+    vlolim[b] = np.pi / 6.0 * (reglim[1] * ratio_d ** (float(c) / nbin[1]))**3
+    vhilim[b] = np.pi / 6.0 * (reglim[1] * ratio_d ** (float(c+1) / nbin[1]))**3
+    dmid[b] = np.sqrt((6.0 * vhilim[b] / np.pi)**0.33333333 * \
+                      (6.0 * vlolim[b] / np.pi)**0.33333333)
 
-  bin_limits = ( 6.0 * vlolim / np.pi )**0.33333333
-  bin_limits = np.append( bin_limits, reglim[-1] )
+  # Bin limits
+  bin_limits = (6.0 * vlolim / np.pi)**0.33333333
+  bin_limits = np.append(bin_limits, reglim[-1])
 
   return dmid, bin_limits
 
 # - - - - - - - - - - - - - - - - - - - - - - - #
 
-def psd_from_data( input_file, EF, bin_limits, input_type, plot ):
+def psd_from_data(input_file, EF, bin_limits, input_type, plot):
   """
+  Plot size distribution data and a sectional size distribution.
+
   Input:
     input_file = filename for the aerosol number size distribution
     EF = emission factor in g/m/veh or #/m/veh
     bin_limits= bin limits of the sectional representation (m)
     input_type = 'mass' or 'number'
     plot = True or False
-  
+
   Output:
     relative_per_bin = relative concentration per bin (sum equals 1)
     psd_sect = number emission per bin #/m/s
   """
-  
+
   # Fit manually:
-  dpg   = np.array([    4.0,    13.0,   75.0, 220.0]) * 1e-9 # in m
-  sigma = np.array([   1.45,    2.00,   1.60,  1.45])
+  dpg   = np.array([4.0 , 13.0, 75.0, 220.0]) * 1e-9 # in m
+  sigma = np.array([1.45, 2.00, 1.60,  1.45])
   rho   = 2000.0 * 1e3 # g/m3
-  
+
   if input_type == 'mass':
     m = np.array([0.00015*EF, 0.008*EF, 0.3*EF, 0.22*EF ])
     V = m / rho # V = rho/m (m3)
-    n = 6.0 * V / (np.pi * dpg**3 * np.exp(9.0/2.0 * np.log(sigma)**2) ) # 1/m3
+    n = 6.0 * V / (np.pi * dpg**3 * np.exp(9.0/2.0 * np.log(sigma)**2)) # 1/m3
   elif input_type == 'number':
     n = np.array([11000.0,  4000.0, 2500.0, 130.0]) # in 1/cm3
-    n = n / np.sum( n ) * EF * 1e6 # 1/m3
-  
-    
+    n = n / np.sum(n) * EF * 1e6 # 1/m3
+
   # Read in data
   data = np.genfromtxt( input_file, delimiter=',' )
-  
+
   # col 0: D (nm)
   # col 1: dN/dlogD (1/cm3)
-                        
+
   dmid = np.sqrt( bin_limits[0:-1] * bin_limits[1::] )
-  
+
   # Calculate size distributions:
-  
-  # Log-normal 
+
+  # Log-normal
   d, psd_lognorm = create_lognorm( dpg, n, sigma )
-  
-  # Sectional 
+
+  # Sectional
   [psd_sect_per_logD, psd_sect] = create_sectional( dpg, n, sigma, bin_limits )
-  
+
   # Plot data and fit
   if plot:
     fig = plt.figure()
@@ -120,9 +111,8 @@ def psd_from_data( input_file, EF, bin_limits, input_type, plot ):
     plt.legend()
     plt.show()
 
-  
   relative_per_bin = psd_sect / np.sum( psd_sect ) 
-  
+
   return relative_per_bin, psd_sect
 
 # - - - - - - - - - - - - - - - - - - - - - - - #

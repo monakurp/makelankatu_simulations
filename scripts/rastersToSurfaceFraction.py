@@ -9,7 +9,8 @@ from netcdfTools import *
 
 '''
 Description:
-Generates surface fractions for each surface layer (vegetation, pavement, water) for when there's overlap between layers.
+Generates surface fractions for each surface layer (vegetation, pavement, water) for
+when there's overlap between layers.
 
 Author: Jani Stromberg
         jani.stromberg@helsinki.fi
@@ -17,7 +18,8 @@ Author: Jani Stromberg
 '''
 
 #==========================================================#
-parser = argparse.ArgumentParser(prog='rastersToSurfacefraction.py', description='''Writes surface_fractions for PALM from input raster data.''')
+parser = argparse.ArgumentParser(prog='rastersToSurfacefraction.py', 
+                                 description='''Writes surface_fractions for PALM from input raster data.''')
 parser.add_argument("-f0","--vegetation", type=str, \
   help="Name of vegetation type input raster data file.")
 parser.add_argument("-f1","--pavement", type=str, \
@@ -51,21 +53,23 @@ R2 = Rdict2['R']
 R2dims = np.array(np.shape(R2))
 R2Orig = Rdict2['GlobOrig']
 dPx2 = Rdict2['dPx']
-Rdict2 = None 
+Rdict2 = None
 
 Rdict3 = readNumpyZTile(water)
 R3 = Rdict3['R']
 R3dims = np.array(np.shape(R3))
 R3Orig = Rdict3['GlobOrig']
 dPx3 = Rdict3['dPx']
-Rdict3 = None 
+Rdict3 = None
 
+# Check that the origos match
 if( (R1Orig == R2Orig).all() and (R2Orig == R3Orig).all() ):
   print(' Excellent! The origos match.')
 else:
   print(' The tiles do not have identical origos. Exiting.')
   sys.exit(1)
 
+# Check that the dimensions match
 if( (R1dims == R2dims).all() and (R2dims == R3dims).all() ):
   print(' Excellent! The dimensions match.')
 else:
@@ -86,13 +90,13 @@ dPc=[dPx3D[1], dPx3D[0], dPx3D[2]]
 print(" 3D grid array dimensions [x,y,z]: {}, {}, {}".format(*nPc))
 print(" Generating fractions ...")
 
-# !!! Not yet implemented in PALM-------
+# Surface fractions
 for i in range(nPc[1]):
   for j in range(nPc[0]):
     vege  = R1[i,j] #nsurface_frac[:,:,0]
     pavem = R2[i,j] #nsurface_frac[:,:,1]
     water = R3[i,j] #nsurface_frac[:,:,2]
-    
+
     if (vege > 0 and pavem > 0):
         nsurface_frac[i,j,0] = 0.5
         nsurface_frac[i,j,1] = 0.5
@@ -110,16 +114,14 @@ for i in range(nPc[1]):
         nsurface_frac[i,j,2] = 1
     else:
         nsurface_frac[i,j,:] = -9999.0
-# !!!-----------------------------------
 
 
 print(" ... done.\n")
 
 # Write output data file
 print(" Writing output file...")
-  
-# Save as Numpy Z file.
 
+# Save as Numpy Z file.
 Rdict1["R"]=nsurface_frac
 Rdict1["dPx"]=dPx3D
 saveTileAsNumpyZ( fileout, Rdict1 )
