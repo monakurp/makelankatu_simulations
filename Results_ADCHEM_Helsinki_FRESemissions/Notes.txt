@@ -1,0 +1,33 @@
+New ADCHEM model results using the 250x250 m resolution FRES emission inventory for Finland.
+
+9/6 2017:
+The model gives substantially higher particle number concentrations than the observations at SMEAR III at 5 m altitude 
+but at 45 m altitude their is more reasonable agreement. 
+The O3 concentrations are in reasonable agreement with the observations at SMEAR III but the diurnal trend in the O3 
+concentration is stronger in the model.
+THe SO2 concentration is low and on the right order of magnitude.
+
+14/6 2017:
+The model underestimate the particle number concentration during the moring 0-6 am but seem to overestimates the particle number
+size distribution during the day 9-21. In the evening 21-24 the modelled particle number size distribution agrees well with the observations.
+The O3 concentrations are in reasonable agreement with the observations at SMEAR III but the diurnal trend in the O3 
+THe SO2 concentration is low and on the right order of magnitude.
+
+
+5/12 2017:
+Generally good agreement between the modelled and observed (SMEAR III) particle number size distributions.
+THe model tend to underestimate the particle number concentration during the early moring 3-6 am and in the evening 9-12 pm.
+The O3 concentration is much lower in the model compared to the observations (~2 ppb compared to around ~20 ppb).
+The reason why the model gives very low O3 concentration is that the air masses are comming from North West without any or very low sun light.
+The NOx trend is relatively well captured by the model.
+THe SO2 concentration is low and on the right order of magnitude.
+
+7/12 2017:
+The shape of the particle number size distributions and the trend in the total particle concentration agree very well 
+between the model and SMEAR III but the model tend to  underestimate the particle number concentrations until the afternoon. 
+During the evening 3-12 pm the modelled particle number concentrations agree very well with the observations.
+Again the model severely underestimates the O3 concentrations (<1 ppb compared to ~20 ppb in the observations). 
+THe SO2 concentration is low and on the right order of magnitude. 
+NOx concentration is underestimated during the day between 8-15.
+
+  
