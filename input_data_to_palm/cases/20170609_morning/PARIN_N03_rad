@@ -35,15 +35,9 @@
 !
 !-- Initialization
 !------------------------------------------------------------------------------
-    initializing_actions = 'read_restart_data',   !'set_constant_profiles', or 'inifor', 
-                                                      ! or both (met. from inifor, chem constant profiles)
+    initializing_actions = 'read_restart_data',
 
-    origin_date_time     = '2017-06-09 06:00:00 +03',
-
-!
-!-- Statistics
-!------------------------------------------------------------------------------
-    statistic_regions    = 3,
+    origin_date_time     = '2017-06-09 07:00:00 +03',
 
 !
 !-- Wall/soil spinup
@@ -53,6 +47,11 @@
     spinup_pt_amplitude  = 3.0,            ! give a diurnal cycle from 11 - 14 °C
     dt_spinup            = 120.0,
     data_output_during_spinup = .F.,
+
+!
+!-- Statistics
+!------------------------------------------------------------------------------
+    statistic_regions    = 3,
 
 !
 !-- Boundary conditions
@@ -84,7 +83,7 @@
 !
 !-- Run steering
 !------------------------------------------------------------------------------
-    end_time              = 8100.0, ! 2*3600s + 15*60s
+    end_time              = 11700.0, ! 2*3600s + 15*60s + 3600s
     create_disturbances   = .T.,
     netcdf_data_format    = 4,
 
@@ -98,17 +97,18 @@
 !-- Profile output settings
 !------------------------------------------------------------------------------
     skip_time_dopr        =   0.0,
-    dt_dopr               = 900.0,
-    averaging_interval_pr = 900.0,
-    dt_averaging_input_pr =   1.0,
+    dt_dopr               =   1.0, !900.0,
+    averaging_interval_pr =   1.0, !900.0,
+    dt_averaging_input_pr =   0.0, !1.0,
 
     data_output_pr        = 'u',  'u*2',  'wu',  'w*u*',  'w"u"',
                             'v',  'v*2',  'wv',  'w*v*',  'w"v"',
                             'w',  'w*2',
-                            'rho',
+                            'rho', 'm_soil', 't_soil',
                             'theta', 'theta*2', 'wtheta', 'w*theta*', 'w"theta"',
-                            'thetav', 'wthetav', 'w*thetav*', 'w"thetav"',
+                            'thetav', 'wthetav', 'w*thetav*', 'w"thetav"', !thetav*2 doesn't exist
                             'w*u*u*:dz', 'w*p*:dz',
+                            'rad_lw_in', 'rad_lw_out', 'rad_sw_in', 'rad_sw_out',
                             'q',  'q*2',
                             'e', 'e*', 
 !
@@ -117,9 +117,9 @@
     do3d_at_begin      = .T., 
     do2d_at_begin      = .T.,
 
-    dt_data_output     =  300.0, 
-    dt_data_output_av  =  600.0,
-    averaging_interval =  600.0,
+    dt_data_output     =    1.0, 
+    dt_data_output_av  =  300.0,
+    averaging_interval =  300.0,
     dt_averaging_input =    1.0, 
 
     section_xy         = 10, 20, 30, 40, 50, 60, 80,
@@ -153,8 +153,14 @@
     dt_domask          = 300.0, ! mask 1: wind field near the surface
                            0.1, ! mask 2: to compare with metek
                            0.1, ! mask 3: to compare with metek 
+                          60.0, ! mask 4: avg aerosol data
+                          60.0, ! mask 5: avg gas data
+                          60.0, ! mask 6: "profile" data (behind the container)
+                          60.0, ! mask 7: "profile" data (on the other side)
+                           1.0, ! mask 8: temporal surface data
+                           1.0, ! mask 9: temporal profile data
 
-    skip_time_domask   = 300.0, 900.0, 900.0,
+    skip_time_domask   = 300.0, 900.0, 900.0, 300.0, 300.0, 300.0, 300.0, 6300.0, 6300.0,
 
 !
 !-- Excluding the border areas
@@ -180,6 +186,129 @@
     mask_y_loop(3,:)   = 171.0, 174.0, 1.0,
     mask_z_loop(3,:)   =  26.5,  29.5, 1.0,
 
+!
+!-- Terrain-following aerosol data
+    data_output_masks(4,:) =  'salsa_N_bin1_av', 
+                              'salsa_N_bin2_av', 
+                              'salsa_N_bin3_av', 
+                              'salsa_N_bin4_av', 
+                              'salsa_N_bin5_av', 
+                              'salsa_N_bin6_av', 
+                              'salsa_N_bin7_av', 
+                              'salsa_N_bin8_av', 
+                              'salsa_N_bin9_av', 
+                              'salsa_N_bin10_av', 
+                              'salsa_LDSA_av',   
+                              'salsa_PM2.5_av', 
+                              'salsa_N_UFP_av',  
+                              'salsa_Ntot_av',
+                              'salsa_s_SO4_av',  
+                              'salsa_s_OC_av',     
+                              'salsa_s_BC_av',  
+                              'salsa_s_NO_av',      
+                              'salsa_s_NH_av',
+                              'salsa_m_bin1_av', 
+                              'salsa_m_bin2_av', 
+                              'salsa_m_bin3_av', 
+                              'salsa_m_bin4_av', 
+                              'salsa_m_bin5_av', 
+                              'salsa_m_bin6_av', 
+                              'salsa_m_bin7_av', 
+                              'salsa_m_bin8_av', 
+                              'salsa_m_bin9_av', 
+                              'salsa_m_bin10_av',
+
+    mask_x_loop(4,:)   = 60.0, 520.0, 1.0,
+    mask_y_loop(4,:)   = 60.0, 520.0, 1.0,
+    mask_k_over_surface(4,:) = 1, 2, 3, 4,
+
+!
+!-- Terrain-following gas data
+    data_output_masks(5,:) =  'kc_NO_av',
+                              'kc_NO2_av',
+                              'kc_O3_av',
+                              'kc_OH_av',
+                              'kc_RH_av',
+                              'kc_RO2_av',
+                              'kc_RCHO_av',
+                              'kc_HO2_av',
+                              'kc_H2SO4_av',
+                              'kc_HNO3_av',
+                              'kc_NH3_av',
+                              'kc_OCNV_av',
+                              'kc_OCSV_av',
+
+    mask_x_loop(5,:)   = 60.0, 520.0, 1.0,
+    mask_y_loop(5,:)   = 60.0, 520.0, 1.0,
+    mask_k_over_surface(5,:) = 1, 2, 3, 4,
+
+!
+!-- "Profiles" in front of the container
+    data_output_masks(6,:) =  'salsa_LDSA_av',
+                              'salsa_Ntot_av',
+                              'salsa_N_UFP_av',
+                              'salsa_PM2.5_av',
+                              'salsa_s_SO4_av', 
+                              'salsa_s_OC_av',
+                              'salsa_s_BC_av',
+                              'salsa_s_NO_av',
+                              'salsa_s_NH_av',
+                              'kc_NO_av',
+                              'kc_NO2_av',
+                              'kc_O3_av',
+
+    mask_x_loop(6,:)   = 313.0, 317.0, 1.0,
+    mask_y_loop(6,:)   = 168.0, 172.0, 1.0,
+    mask_z_loop(6,:)   =  24.0, 144.0, 1.0,
+
+!
+!-- "Profiles" on the other side of the street
+    data_output_masks(7,:) =  'salsa_LDSA_av',
+                              'salsa_Ntot_av',
+                              'salsa_N_UFP_av',
+                              'salsa_PM2.5_av',
+                              'salsa_s_SO4_av',
+                              'salsa_s_OC_av',
+                              'salsa_s_BC_av',  
+                              'salsa_s_NO_av',
+                              'salsa_s_NH_av',
+                              'kc_NO_av',      
+                              'kc_NO2_av',
+                              'kc_O3_av',
+
+    mask_x_loop(7,:)   = 332.0, 336.0, 1.0, 
+    mask_y_loop(7,:)   = 196.0, 200.0, 1.0,
+    mask_z_loop(7,:)   =  24.0, 144.0, 1.0,
+
+!
+!-- Temporal terrain-following data
+    data_output_masks(8,:) =  'salsa_LDSA',   
+                              'salsa_PM2.5', 
+                              'salsa_N_UFP',  
+                              'salsa_Ntot', 
+                              'kc_NO',
+                              'kc_NO2',
+                              'kc_O3',
+
+    mask_x_loop(8,:)   = 60.0, 520.0, 1.0,
+    mask_y_loop(8,:)   = 60.0, 520.0, 1.0,
+    mask_k_over_surface(8,:) = 3,
+
+!
+!-- Temporal "profiles" in front of the container
+    data_output_masks(9,:) =  'salsa_LDSA',   
+                              'salsa_PM2.5', 
+                              'salsa_N_UFP',  
+                              'salsa_Ntot', 
+                              'kc_NO',
+                              'kc_NO2',
+                              'kc_O3',
+
+    mask_x_loop(9,:)   = 313.0, 317.0, 1.0,
+    mask_y_loop(9,:)   = 168.0, 172.0, 1.0,
+    mask_z_loop(9,:)   =  24.0, 144.0, 1.0,
+
+
  / ! end of runtime_parameters namelist
 
 
@@ -193,7 +322,6 @@
     canopy_drag_coeff = 0.3,
     
  / ! end of plant_canopy_parameters namelist
-
 
 
 
@@ -236,11 +364,6 @@
     deep_soil_temperature  = 275.0,
     
 
-!    dz_soil		   = 0.035, 0.175, 0.64, 1.945, ! levels for T and M, m
-!    soil_temperature       = 281.98, 281.06, 278.44, 275.36, ! temperature, K
-!    soil_moisture          = 0.317,   0.343,  0.360,  0.428,  ! volumetric water content, m3/m3
-!    root_fraction          = 0.49, 0.26, 0.25, 0.0,
-
  / ! end of land_surface_parameters namelist
 
 
@@ -274,8 +397,8 @@
 		       	'theta_surface_av',
 			'theta1_av',
 			'rad_net_av',
-			'rad_lw_in_av','rad_lw_dif_av','rad_lw_ref_av','rad_lw_res_av',
-			'rad_sw_in_av','rad_sw_dif_av','rad_sw_ref_av','rad_sw_res_av',
+			'rad_lw_in_av','rad_lw_dif_av','rad_lw_ref_av','rad_lw_res_av','rad_lw_out_av',
+			'rad_sw_in_av','rad_sw_dif_av','rad_sw_ref_av','rad_sw_res_av','rad_sw_out_av',
                         'qv1_av', 'usws_av', 'vsws_av', 'qsws_av', 
                         'waste_heat_av', 'im_hf_av'
     dt_dosurf	= 5.0,
@@ -296,6 +419,148 @@
 
  / ! end of indoor_parameters namelist
 
+
+!-------------------------------------------------------------------------------
+!-- CHEMISTRY MODEL PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/chempar
+!-------------------------------------------------------------------------------
+ &chemistry_parameters
+
+    chem_mechanism             = 'salsa+simple',
+    chem_gasphase_on           = .T.,
+    call_chem_at_all_substeps  = .FALSE.,
+
+    photolysis_scheme          = 'simple',
+!
+!-- Chemical species
+    cs_name                    =     'NO',    'NO2',     'O3',     'OH',     'RH',    'RO2',   'RCHO',
+                                    'HO2',  'H2SO4',   'HNO3',    'NH3',   'OCNV',   'OCSV',
+    cs_surface                 = 2.07e-02, 3.07e-02, 7.18e-03, 2.58e-09, 4.49e-02, 1.84e-08, 1.43e-02, 
+                                 1.89e-08, 5.25e-08, 1.78e-04, 1.51e-03, 1.05e-06, 2.45e-05,        ! in ppm
+
+!-- Initial profiles (also for lateral boundaries if 'set_constant_profiles' is chosen) in ppm
+
+    cs_profile(1,:)            =  2.07e-02,  2.07e-02,  1.20e-02,  7.78e-03,  3.61e-03,  4.39e-04,  ! NO
+    cs_profile(2,:)            =  3.07e-02,  3.07e-02,  1.64e-02,  8.95e-03,  6.02e-03,  8.54e-04,  ! NO2
+    cs_profile(3,:)            =  7.18e-03,  7.18e-03,  7.67e-03,  8.30e-03,  1.34e-02,  3.29e-02,  ! O3
+    cs_profile(4,:)            =  2.58e-09,  2.58e-09,  4.60e-09,  8.77e-09,  2.13e-08,  6.53e-08,  ! OH
+    cs_profile(5,:)            =  4.49e-02,  4.49e-02,  2.52e-02,  1.45e-02,  1.55e-03,  2.56e-04,  ! RH
+    cs_profile(6,:)            =  1.84e-08,  1.84e-08,  3.29e-08,  6.25e-08,  8.69e-08,  2.49e-06,  ! RO2
+    cs_profile(7,:)            =  1.43e-02,  1.43e-02,  1.13e-02,  9.77e-03,  7.91e-03,  7.69e-03,  ! RCHO
+    cs_profile(8,:)            =  1.89e-08,  1.89e-08,  3.50e-08,  6.95e-08,  1.40e-07,  3.49e-06,  ! HO2
+    cs_profile(9,:)            =  5.25e-08,  5.25e-08,  4.63e-08,  4.55e-08,  1.86e-07,  9.23e-09,  ! H2SO4
+    cs_profile(10,:)           =  1.78e-04,  1.78e-04,  1.62e-04,  1.79e-04,  6.03e-04,  7.22e-04,  ! HNO3
+    cs_profile(11,:)           =  1.51e-03,  1.51e-03,  5.98e-04,  1.98e-04,  9.91e-06,  5.88e-05,  ! NH3
+    cs_profile(12,:)           =  1.05e-06,  1.05e-06,  1.37e-06,  1.65e-06,  3.67e-06,  8.13e-06,  ! OCNV
+    cs_profile(13,:)           =  2.45e-05,  2.45e-05,  2.51e-05,  2.61e-05,  4.75e-05,  1.38e-04,  ! OCSV
+
+    cs_heights(1,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! NO
+    cs_heights(2,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! NO2
+    cs_heights(3,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! O3
+    cs_heights(4,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! OH
+    cs_heights(5,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! RH
+    cs_heights(6,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! RO2
+    cs_heights(7,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! RCHO
+    cs_heights(8,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! HO2
+    cs_heights(9,:)            =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! H2SO4
+    cs_heights(10,:)           =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! HNO3
+    cs_heights(11,:)           =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! NH3
+    cs_heights(12,:)           =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! OCNV
+    cs_heights(13,:)           =       0.0,       5.0,      20.0,      45.0,      80.0,     125.0,  ! OCSV
+
+!
+!-- Emissions:   
+    emissions_anthropogenic    = .T., ! include emissions
+    emiss_lod                  = 2,   ! LOD=2: pre-processed surface fluxes
+
+!
+!-- Nesting:
+    nesting_chem               = .F., ! switch off nesting for chemistry
+!
+!-- Boundary conditions:
+    decycle_chem_lr            = .T., ! decycle left-right 
+    decycle_chem_ns            = .T., ! decycle north-south
+    decycle_method             = 'dirichlet','dirichlet','dirichlet','dirichlet', ! fixed boundary
+    bc_cs_b                    = 'neumann',
+    bc_cs_t                    = 'neumann',
+
+! -- KPP solver steering. For details  see comments in chem_gasphase_mod.f90, SUBROUTINE rosenbrock 
+!                         (or other solver subroutine, if another solver is chosen)
+    icntrl(3)                  = 1,   ! solver ros2
+    icntrl(4)                  = 500, ! max. number of chem-substeps
+    rcntrl(3)                  = 0.1, ! Hstart,starting value for the integration step size
+
+ / ! end of chemistry_parameters namelist
+ 
+
+!-------------------------------------------------------------------------------
+!-- SALSA PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/salsapar
+!-------------------------------------------------------------------------------
+ &salsa_parameters  
+!
+!-- Time stepping 
+    dt_salsa                   =    1.0, ! time step for calculating aerosol processes (s)
+    skip_time_do_salsa         =  300.0, ! starting time of SALSA (s), skip first 5 minutes
+
+!
+!-- List of activated chemical components: 
+!-- NOTE! Chemical species have to be activated here even if they are not initially present!
+    listspec                   = 'SO4','OC','BC','NO','NH','','',    
+    ! listspec                 = 'SO4','OC','BC','DU','SS','NO','NH', 
+
+
+!
+!-- Sectional presentation of the particle size distribution
+    reglim                     = 2.5E-9, 1.5E-8, 1.0E-6, ! limits of the subranges (m)
+    nbin                       = 3, 7,                   ! number of bins per subrange 
+!-- NOTE! Subrange 1 consists only of H2SO4 and/or OC
+    nf2a                       = 1.0,	                 ! Number fraction of subrange 2a
+
+!
+!-- Aerosol emissions:
+    salsa_emission_mode        = 'read_from_file',
+
+!-- NOTE! chemical components of the source have to be activated in 'listspec'
+
+!
+!-- Boundary conditions
+    decycle_salsa_lr           = .T.,        ! decycle left-right
+    decycle_salsa_ns           = .T.,        ! decycle north-south
+    decycle_method_salsa       = 'dirichlet','dirichlet','dirichlet','dirichlet',  ! fixed boundary
+    bc_salsa_b                 = 'neumann',  ! emission requires 'neumann'
+    bc_salsa_t                 = 'neumann',  ! top
+
+!
+!-- Switches for aerosol processes:
+    nldistupdate               = .T., ! Update size distribution (default .T.)
+    nldepo                     = .T., ! Deposition master switch
+    nldepo_pcm                 = .T., ! Deposition on vegetation
+    nldepo_surf                = .T., ! Deposition on walls
+    nlcnd                      = .T., ! Condensation master switch
+    nlcndgas                   = .T., ! Condensation of precursor gases
+    nlcndh2oae                 = .F., ! Condensation of H2O on aerosols
+    nlcoag                     = .T., ! Coagulation master switch
+    nsnucl                     =  0,  ! Nucleation scheme (0 = off)
+    nj3                        =  1,  ! J3 parametrization for nucleation 
+
+!
+!-- Deposition parametrisations:
+    depo_pcm_par               = 'zhang2001',  ! plant canopy
+    depo_surf_par              = 'zhang2001',  ! ground, roofs and walls
+    season_z01                 = 1,            ! summer
+
+!
+!-- Other switches:
+    advect_particle_water      = .T.,   ! particle water: advect or calculate at each dt_salsa 
+    feedback_to_palm           = .F.,   ! feedback to flow due to condensation of water
+    nesting_salsa              = .F.,   ! apply self-nesting for salsa variables
+    read_restart_data_salsa    = .F.,   ! skip reading restart data even if it's done for the flow
+    write_binary_salsa         = .F.,   ! skip writing restart data even if it's done for the flow
+    nesting_offline_salsa      = .F.,   ! apply offline nesting for salsa
+         
+ / ! end of salsa_parameters namelist
+
 !-------------------------------------------------------------------------------
 !-- USER-DEFINED PARAMETER NAMELIST
 !   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/userpar
@@ -303,9 +568,9 @@
  &user_parameters
 
     region = 'Container', 'Street', 'Reference',
-!    salsa_dynamic_background_concentrations = .F.,  ! forced offline nesting
-!    salsa_static_background_concentrations  = .T.,  ! read from PIDS_DYNAMIC
+    salsa_dynamic_background_concentrations = .F.,  ! forced offline nesting
+    salsa_static_background_concentrations  = .T.,  ! read from PIDS_DYNAMIC
     
  / ! end of user_parameters namelist
 
-
+ 
