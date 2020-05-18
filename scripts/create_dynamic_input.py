@@ -45,7 +45,7 @@ variable  = False
 # Starting and ending times per simulation:
 
 if ( datestr=='20170609' and sim_time=='morning' ):
-  start_hour = 7
+  start_hour = 6
   start_min  = 0
   end_hour   = 9
   end_min    = 15
@@ -966,7 +966,7 @@ if not precursor:
 
   dummy =  np.zeros([ee-ss+1, len( y_N03 ), len( x_N03 ), nbins], dtype=float)
   for j in range(len(y_N03)):
-    for i in range(len x_N03)):
+    for i in range(len (x_N03)):
       dummy[:,j,i,:] = lsf_psd[:,-1,:]
   namev = 'ls_forcing_top_aerosol'
   lsf_psdv = createNetcdfVariable(dsout_N03, dummy, namev, 0, '', 'f4',
