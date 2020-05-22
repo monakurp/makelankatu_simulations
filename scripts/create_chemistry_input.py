@@ -44,7 +44,7 @@ VTT = False # use VTT fuel consumption data instead of EEA
 date = '{}{:02d}{:02d}'.format(year,month,day)
 
 if ( date=='20170609' and tod=='morning' ):
-  start_hour = 7
+  start_hour = 6
   start_min  = 0
   end_hour   = 9
   end_min    = 15
@@ -71,9 +71,6 @@ elif ( date=='20171207' and tod=='morning' ):
   end_min    = 15
   plusUTC    = 2
 
-#%% Colors for plotting:
-cmap_init_st = cm.get_cmap('PiYG', 3) 
-cmap_new_st  = cm.get_cmap('rainbow', len(st_names) )
 
 #%% Different street types around Makelankatu:
 
@@ -84,6 +81,10 @@ st_traffic_relative = np.array([200., 5400., 28100., 28100., 8700., 43200., 4320
 st_traffic_relative = st_traffic_relative / st_traffic_relative[2]
 st_traffic_relative[-2::] = 1.0 + 0.3/0.7
 st_width = np.array([5., 6., 10., 10., 10., 10., 10.])
+
+#%% Colors for plotting:
+cmap_init_st = cm.get_cmap('PiYG', 3) 
+cmap_new_st  = cm.get_cmap('rainbow', len(st_names) )
 
 #%% File paths and names:
 
@@ -537,7 +538,7 @@ pids_chem.close()
 pids_static.close()
 
 print('Saved {} successfully!'. format(pids_salsa_out))
-print('Saved {} successfully!'. format pids_chem_out))
+print('Saved {} successfully!'. format(pids_chem_out))
 
 #%% Save into a file: anthropogenic heat
 
