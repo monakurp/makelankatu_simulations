@@ -37,7 +37,7 @@
     initializing_actions = 'read_restart_data',   !'set_constant_profiles', or 'inifor', 
                                                       ! or both (met. from inifor, chem constant profiles)
 
-    origin_date_time     = '2017-06-09 06:00:00 +03',
+    origin_date_time     = '2017-06-09 07:00:00 +03',
 
 !
 !-- Statistics
@@ -84,7 +84,7 @@
 !
 !-- Run steering
 !------------------------------------------------------------------------------
-    end_time              = 8100.0, ! 2*3600s + 15*60s
+    end_time              = 11700.0, ! 2*3600s + 15*60s + 3600s
     create_disturbances   = .T.,
     netcdf_data_format    = 4,
 
@@ -98,26 +98,27 @@
 !-- Profile output settings
 !------------------------------------------------------------------------------
     skip_time_dopr        =   0.0,
-    dt_dopr               = 900.0,
-    averaging_interval_pr = 900.0,
-    dt_averaging_input_pr =   1.0,
+    dt_dopr               =   1.0, !900.0,
+    averaging_interval_pr =   1.0, !900.0,
+    dt_averaging_input_pr =   0.0, !1.0,
 
     data_output_pr        = 'u',  'u*2',  'wu',  'w*u*',  'w"u"',
                             'v',  'v*2',  'wv',  'w*v*',  'w"v"',
                             'w',  'w*2',
-                            'rho',
+                            'rho', 'm_soil', 't_soil',
                             'theta', 'theta*2', 'wtheta', 'w*theta*', 'w"theta"',
                             'thetav', 'wthetav', 'w*thetav*', 'w"thetav"', !thetav*2 doesn't exist
                             'w*u*u*:dz', 'w*p*:dz',
+                            'rad_lw_in', 'rad_lw_out', 'rad_sw_in', 'rad_sw_out',
                             'q',  'q*2',
-                            'e', 'e*', 
+                            'e', 'e*',
 !
 !-- 2D/3D output settings
 !------------------------------------------------------------------------------
     do3d_at_begin      = .F., 
     do2d_at_begin      = .F.,
 
-    dt_data_output     = 300.0, 
+    dt_data_output     =  10.0, 
     dt_data_output_av  = 600.0,
     averaging_interval = 600.0,
     dt_averaging_input =   1.0, 
@@ -233,8 +234,8 @@
 		       	'theta_surface_av',
 			'theta1_av',
 			'rad_net_av',
-			'rad_lw_in_av','rad_lw_dif_av','rad_lw_ref_av','rad_lw_res_av',
-			'rad_sw_in_av','rad_sw_dif_av','rad_sw_ref_av','rad_sw_res_av',
+			'rad_lw_in_av','rad_lw_dif_av','rad_lw_ref_av','rad_lw_res_av', 'rad_lw_out_av',
+			'rad_sw_in_av','rad_sw_dif_av','rad_sw_ref_av','rad_sw_res_av', 'rad_sw_out_av',
                         'qv1_av', 'usws_av', 'vsws_av', 'qsws_av', 
                         'waste_heat_av', 'im_hf_av'
     dt_dosurf	= 5.0,
