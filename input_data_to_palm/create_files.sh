@@ -14,8 +14,8 @@ include_land_use_types=false # include land use types
 include_child_lanes=false # include child lane maps
 
 # Horizontal resolutions:
-dx_root=3
-dx_parent=9
+dx_root=9
+dx_parent=3
 dx_child=1
 
 # Horizontal dimensions:
@@ -29,7 +29,7 @@ ny_child=576
 # Origin of the map (N=Northing, E=Easting):
 pN=6676070
 pE=25497317
-pE_root=25492970
+pE_root=25496417
 
 # Pivot point (0-1):
 rLx=0.5
@@ -89,10 +89,10 @@ fi
 $scriptpath/rasterTileSubtraction.py -f topo_root.npz -fs oro_root.npz -fm building_id_root.npz -mvl 6.0 -ntp -fo topo_root.npz
 
 #create building id from topography
-replaceRasterValues.py -f topo_root.npz -fo building_id_root.npz -gt 0 -v 1 -p1 0 0 -p2 $ny_root $nx_root 
+replaceRasterValues.py -f topo_root.npz -fo building_id_root.npz -gt 0 -v 1 -p1 0 0 -p2 $ny_root $nx_root
 
 #replace with fill value (-9999) where there are no buildings
-replaceRasterValues.py -f topo_root.npz -fo topo_root.npz -lt 0.000000001 -v $ffloat -p1 0 0 -p2 $ny_root $nx_root 
+replaceRasterValues.py -f topo_root.npz -fo topo_root.npz -lt 0.000000001 -v $ffloat -p1 0 0 -p2 $ny_root $nx_root
 
 #same for building id, but with different fill value
 replaceRasterValues.py -f building_id_root.npz -fo building_id_root.npz -lt 1 -v $fint -p1 0 0 -p2 $ny_root $nx_root
@@ -161,8 +161,8 @@ if $include_land_use_types; then
 
   # same as with root
   replaceRasterValues.py -f topo_parent.npz -fo building_id_parent.npz -gt 0 -v 1 -p1 0 0 -p2 $ny_parent $nx_parent
-  replaceRasterValues.py -f building_id_parent.npz -fo building_parent.npz -gt 0 -v 5 -p1 0 0 -p2 $ny_parent $nx_parent 
-  replaceRasterValues.py -f topo_parent.npz -fo topo_parent.npz -lt 0.000000001 -v $ffloat -p1 0 0 -p2 $ny_parent $nx_parent 
+  replaceRasterValues.py -f building_id_parent.npz -fo building_parent.npz -gt 0 -v 5 -p1 0 0 -p2 $ny_parent $nx_parent
+  replaceRasterValues.py -f topo_parent.npz -fo topo_parent.npz -lt 0.000000001 -v $ffloat -p1 0 0 -p2 $ny_parent $nx_parent
   replaceRasterValues.py -f building_id_parent.npz -fo building_id_parent.npz -lt 1 -v $fint -p1 0 0 -p2 $ny_parent $nx_parent
   replaceRasterValues.py -f building_parent.npz -fo building_parent.npz -lt 1 -v $fbyte -p1 0 0 -p2 $ny_parent $nx_parent
 
@@ -220,7 +220,7 @@ if $include_land_use_types; then
   # same as with root/parent
   replaceRasterValues.py -f topo_child.npz -fo building_id_child.npz -gt 0 -v 1 -p1 0 0 -p2 $ny_child $nx_child
   replaceRasterValues.py -f building_id_child.npz -fo building_child.npz -gt 0 -v 5 -p1 0 0 -p2 $ny_child $nx_child
-  replaceRasterValues.py -f topo_child.npz -fo topo_child.npz -lt 0.000000001 -v $ffloat -p1 0 0 -p2 $ny_child $nx_child 
+  replaceRasterValues.py -f topo_child.npz -fo topo_child.npz -lt 0.000000001 -v $ffloat -p1 0 0 -p2 $ny_child $nx_child
   replaceRasterValues.py -f building_id_child.npz -fo building_id_child.npz -lt 1 -v $fint -p1 0 0 -p2 $ny_child $nx_child
   replaceRasterValues.py -f building_child.npz -fo building_child.npz -lt 1 -v $fbyte -p1 0 0 -p2 $ny_child $nx_child
 
@@ -246,4 +246,3 @@ rm -f .extractDomain*
 rm -f .rasterTo*
 rm -f .maskFromRaster*
 rm -f .replaceRasterValues*
-
