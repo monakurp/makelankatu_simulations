@@ -111,7 +111,8 @@
                             'w*u*u*:dz', 'w*p*:dz',
                             'rad_lw_in', 'rad_lw_out', 'rad_sw_in', 'rad_sw_out',
                             'q',  'q*2',
-                            'e', 'e*', 
+                            'e', 'e*',
+                            'eta', 'km', 'kh', 'l', 'Sw',
 !
 !-- 2D/3D output settings
 !------------------------------------------------------------------------------
@@ -278,7 +279,8 @@
 			'rad_lw_in_av','rad_lw_dif_av','rad_lw_ref_av','rad_lw_res_av', 'rad_lw_out_av',
 			'rad_sw_in_av','rad_sw_dif_av','rad_sw_ref_av','rad_sw_res_av', 'rad_sw_out_av',
                         'qv1_av', 'usws_av', 'vsws_av', 'qsws_av', 
-                        'waste_heat_av', 'im_hf_av'
+                        'waste_heat_av', 'im_hf_av',
+                        'us_av', 'z0_av', 'z0h_av', 'ol_av', 'uvw1_av', 'albedo_av', 'emissivity_av',
     dt_dosurf	= 5.0,
     dt_dosurf_av = 900.0,
 
