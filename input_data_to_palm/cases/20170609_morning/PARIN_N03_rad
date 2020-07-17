@@ -158,10 +158,10 @@
                           60.0, ! mask 5: avg gas data
                           60.0, ! mask 6: "profile" data (behind the container)
                           60.0, ! mask 7: "profile" data (on the other side)
-                           1.0, ! mask 8: temporal surface data
+                          60.0, ! mask 8: temporal surface data
                            1.0, ! mask 9: temporal profile data
 
-    skip_time_domask   = 300.0, 900.0, 900.0, 300.0, 300.0, 300.0, 300.0, 6300.0, 6300.0,
+    skip_time_domask   = 300.0, 900.0, 900.0, 300.0, 300.0, 300.0, 300.0, 300.0, 6300.0,
 
 !
 !-- Excluding the border areas
@@ -169,7 +169,7 @@
 
     mask_x_loop(1,:)   = 60.0, 520.0, 1.0,
     mask_y_loop(1,:)   = 60.0, 520.0, 1.0,
-    mask_k_over_surface(1,:) = 1, 2, 4,
+    mask_k_over_surface(1,:) = 1, 2, 3, 4,
 
 !
 !-- North-Western corner of measurement container
@@ -282,18 +282,18 @@
     mask_z_loop(7,:)   =  24.0, 144.0, 1.0,
 
 !
-!-- Temporal terrain-following data
-    data_output_masks(8,:) =  'salsa_LDSA',   
-                              'salsa_PM2.5', 
-                              'salsa_N_UFP',  
-                              'salsa_Ntot', 
-                              'kc_NO',
-                              'kc_NO2',
-                              'kc_O3',
+!-- Volume data:
+    data_output_masks(8,:) =  'salsa_LDSA_av',   
+                              'salsa_PM2.5_av', 
+                              'salsa_N_UFP_av',  
+                              'salsa_Ntot_av', 
+                              'kc_NO_av',
+                              'kc_NO2_av',
+                              'kc_O3_av',
 
     mask_x_loop(8,:)   = 60.0, 520.0, 1.0,
     mask_y_loop(8,:)   = 60.0, 520.0, 1.0,
-    mask_k_over_surface(8,:) = 3,
+    mask_z_loop(8,:)   =  0.0,  80.0, 1.0,
 
 !
 !-- Temporal "profiles" in front of the container
@@ -433,6 +433,8 @@
     call_chem_at_all_substeps  = .FALSE.,
 
     photolysis_scheme          = 'simple',
+
+    skip_time_do_chemistry     = 300.0,
 !
 !-- Chemical species
     cs_name                    =     'NO',    'NO2',     'O3',     'OH',     'RH',    'RO2',   'RCHO',
@@ -480,11 +482,12 @@
     nesting_chem               = .F., ! switch off nesting for chemistry
 !
 !-- Boundary conditions:
-    decycle_chem_lr            = .T., ! decycle left-right 
-    decycle_chem_ns            = .T., ! decycle north-south
-    decycle_method             = 'dirichlet','dirichlet','dirichlet','dirichlet', ! fixed boundary
-    bc_cs_b                    = 'neumann',
-    bc_cs_t                    = 'neumann',
+    bc_cs_l                    = 'dirichlet',  ! left: fixed boundary
+    bc_cs_r                    = 'dirichlet',  ! right: fixed boundary
+    bc_cs_n                    = 'dirichlet',  ! north: fixed boundary
+    bc_cs_s                    = 'dirichlet',  ! south: fixed boundary
+    bc_cs_b                    = 'neumann',    ! bottom: free-slip (emissions)
+    bc_cs_t                    = 'neumann',    ! bottom: free-slip
 
 ! -- KPP solver steering. For details  see comments in chem_gasphase_mod.f90, SUBROUTINE rosenbrock 
 !                         (or other solver subroutine, if another solver is chosen)
@@ -527,11 +530,12 @@
 
 !
 !-- Boundary conditions
-    decycle_salsa_lr           = .T.,        ! decycle left-right
-    decycle_salsa_ns           = .T.,        ! decycle north-south
-    decycle_method_salsa       = 'dirichlet','dirichlet','dirichlet','dirichlet',  ! fixed boundary
-    bc_salsa_b                 = 'neumann',  ! emission requires 'neumann'
-    bc_salsa_t                 = 'neumann',  ! top
+    bc_aer_l                   = 'dirichlet',  ! left: fixed boundary
+    bc_aer_r                   = 'dirichlet',  ! right: fixed boundary
+    bc_aer_n                   = 'dirichlet',  ! north: fixed boundary
+    bc_aer_s                   = 'dirichlet',  ! south: fixed boundary
+    bc_aer_b                   = 'neumann',    ! bottom: free-slip (emissions)
+    bc_aer_t                   = 'neumann',    ! bottom: free-slip
 
 !
 !-- Switches for aerosol processes:
@@ -557,8 +561,6 @@
     advect_particle_water      = .T.,   ! particle water: advect or calculate at each dt_salsa 
     feedback_to_palm           = .F.,   ! feedback to flow due to condensation of water
     nesting_salsa              = .F.,   ! apply self-nesting for salsa variables
-    read_restart_data_salsa    = .F.,   ! skip reading restart data even if it's done for the flow
-    write_binary_salsa         = .F.,   ! skip writing restart data even if it's done for the flow
     nesting_offline_salsa      = .F.,   ! apply offline nesting for salsa
          
  / ! end of salsa_parameters namelist
