@@ -99,7 +99,7 @@
                             'thetav', 'wthetav', 'w*thetav*', 'w"thetav"', !thetav*2 doesn't exist
                             'w*u*u*:dz', 'w*p*:dz',
                             'q',  'q*2',
-                            'e', 'e*',
+                            'e', 'e*', 'w*e*',
                             'eta', 'km', 'kh', 'l', 'Sw',
 !
 !-- 2D/3D output settings

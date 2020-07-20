@@ -110,7 +110,7 @@
                             'w*u*u*:dz', 'w*p*:dz',
                             'rad_lw_in', 'rad_lw_out', 'rad_sw_in', 'rad_sw_out',
                             'q',  'q*2',
-                            'e', 'e*',
+                            'e', 'e*', 'w*e*',
                             'eta', 'km', 'kh', 'l', 'Sw',
 !
 !-- 2D/3D output settings
