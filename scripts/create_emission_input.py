@@ -7,6 +7,7 @@ from scipy.ndimage import binary_erosion, binary_dilation
 from pylab import cm
 from psdLib import define_bins, interpolate_psd_from_figure, ntot_from_psd_and_pm
 import netCDF4 as nc
+import datetime 
 
 '''
 Description:
@@ -22,9 +23,11 @@ plt.close('all')
 
 folder = '/home/monakurp/makelankatu_simulations'
 year = 2017
-month = 12
-day = 7
+month = 6
+day = 9
 tod  = 'morning'
+
+radiation = True#False
 
 # Aerosol size distribution:
 nbins = 10  # number of size bins applied in SALSA
@@ -44,11 +47,14 @@ VTT = False # use VTT fuel consumption data instead of EEA
 date = '{}{:02d}{:02d}'.format(year,month,day)
 
 if ( date=='20170609' and tod=='morning' ):
-  start_hour = 6
+  start_hour = 7
   start_min  = 0
   end_hour   = 9
   end_min    = 15
   plusUTC    = 3
+  
+  if radiation:
+    start_hour = 6
 
 if ( date=='20170609' and tod=='evening' ):
   start_hour = 20
@@ -119,7 +125,11 @@ file_emissions_HSY = 'source_data/HSY/emissions_PM_makelankatu_2017.xlsx'
 pids_folder = 'input_data_to_palm/cases/{}_{}'.format(date, tod)
 
 # Output files:
-pids_salsa_out = '{}/PIDS_SALSA_N03'.format(pids_folder)
+if radiation:
+  rad_suffix = 'RAD/'
+else:
+  rad_suffix = ''
+pids_salsa_out = '{}/{}PIDS_SALSA_N03'.format(pids_folder, rad_suffix)
 if not hourly:
   pids_salsa_out += '_15min'
 if PM_HSY:
@@ -135,7 +145,7 @@ if hietikko:
     pids_salsa_out += '_VTT'
   else:
     pids_salsa_out += '_EEA'
-pids_chem_out = '{}/PIDS_CHEM_N03{}'.format(pids_folder, suffix)
+pids_chem_out = '{}/{}PIDS_CHEM_N03{}'.format(pids_folder, rad_suffix, suffix)
 
 #%% Read in input files
 
@@ -158,7 +168,7 @@ HDD_data = np.genfromtxt(file_HDD, delimiter=',') # year, month, day, T, HDD
 
 # HSY emission data in g/km (multiplied by the traffic rate already)
 def dateparse_fleetdistr(date_string):
-  dt = pd.datetime.strptime(date_string, '%Y %m %d %H')
+  dt = datetime.datetime.strptime(date_string, '%Y %m %d %H')
   return dt
 emission_HSY = pd.read_excel(file_emissions_HSY, 'Taul1', delimiter=',', header=4,
                              date_parser=dateparse_fleetdistr,
@@ -393,7 +403,7 @@ aerosol_emission_values[aerosol_emission_values==0] = -9999.0
 
 #%% Save into a file: aerosol and gas emissions
 
-pids_static = nc.Dataset('{}/PIDS_STATIC_N03'.format( pids_folder, tod ), 'r')
+pids_static = nc.Dataset('{}/PIDS_STATIC_N03'.format(pids_folder), 'r')
 pids_salsa  = nc.Dataset(pids_salsa_out, 'w', format='NETCDF4')
 pids_chem   = nc.Dataset(pids_chem_out, 'w', format='NETCDF4')
 
@@ -545,8 +555,9 @@ print('Saved {} successfully!'. format(pids_chem_out))
 topo_top = np.ceil(child_oro['R']).astype(int)
 
 # ANTHROPOGENIC_HEAT and ANTHROPOGENIC_HEAT_PROFILE (which is set to 1)
-f1 = open('input_data_to_palm/cases/{}_{}/ANTHROPOGENIC_HEAT'.format(date, tod), 'w+')
-f2 = open('input_data_to_palm/cases/{}_{}/ANTHROPOGENIC_HEAT_PROFILE'.format(date, tod), 'w+')
+f1 = open('input_data_to_palm/cases/{}_{}/{}ANTHROPOGENIC_HEAT'.format(date, tod, rad_suffix),'w+')
+f2 = open('input_data_to_palm/cases/{}_{}/{}ANTHROPOGENIC_HEAT_PROFILE'.format(date, tod, 
+                                                                               rad_suffix), 'w+')
   
 for i in range(len(street_types)):
   for j in range(len(street_types)):

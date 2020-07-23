@@ -29,6 +29,7 @@ datestr     = '{}{:02d}{:02d}'.format(sim_year, sim_month, sim_day)
 adchem_type = 'FRES' # 'FRES' or 'orig'
 
 precursor = False
+radiation = True
 
 # ------------------------------------------------------------------------------------------------#
 
@@ -45,23 +46,30 @@ variable  = False
 # Starting and ending times per simulation:
 
 if ( datestr=='20170609' and sim_time=='morning' ):
-  start_hour = 6
+  start_hour = 7
   start_min  = 0
   end_hour   = 9
   end_min    = 15
   plusUTC    = 3
+  
+  if radiation:
+    precursor = False
+    start_hour = 6
+    
 elif ( datestr=='20170609' and sim_time=='evening' ):
   start_hour = 20
   start_min  = 10
   end_hour   = 21
   end_min    = 15
   plusUTC    = 3
+  
 elif ( datestr=='20170614' and sim_time=='morning' ):
   start_hour = 6
   start_min  = 55
   end_hour   = 9
   end_min    = 0
   plusUTC    = 3
+  
 elif ( datestr=='20171207' and sim_time=='morning' ):
   start_hour = 7
   start_min  = 5
@@ -161,14 +169,18 @@ fname_adchem = 'source_data/ADCHEM_data/09062017_{}.mat'.format(adchem_type)
 fname_soiltype = 'input_data_to_palm/cases/{}_{}/PIDS_STATIC'.format(datestr, sim_time)
 
 # Output PIDS_DYNAMIC files
-if precursor:
-  fname_out     = '{}/PIDS_DYNAMIC_precursor{}'.format(out_folder, suffix)
+if radiation:
+  fname_out     = '{}/RAD/PIDS_DYNAMIC{}'.format(out_folder, suffix)
+  fname_out_N03 = '{}/RAD/PIDS_DYNAMIC_N03_{}{}'.format(out_folder, adchem_type, suffix)
 else:
-  fname_out     = '{}/PIDS_DYNAMIC{}'.format(out_folder, suffix)
-fname_out_N03 = '{}/PIDS_DYNAMIC_N03_{}{}'.format(out_folder, adchem_type, suffix)
+  if precursor:
+    fname_out     = '{}/PIDS_DYNAMIC_precursor{}'.format(out_folder, suffix)
+  else:
+    fname_out     = '{}/PIDS_DYNAMIC{}'.format(out_folder, suffix)
+  fname_out_N03 = '{}/PIDS_DYNAMIC_N03_{}{}'.format(out_folder, adchem_type, suffix)
 
 # Output file for vertical profiles of gases
-fname_gases = '{}/cs_profile.txt'.format(out_folder)
+fname_gases = '{}/RAD/cs_profile.txt'.format(out_folder)
 
 
 #%% Create netCDF datasets
