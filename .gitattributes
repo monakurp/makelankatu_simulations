@@ -69,3 +69,7 @@ input_data_to_palm/cases/20171207_morning/PIDS_DYNAMIC_wd_kivenlahti filter=lfs 
 input_data_to_palm/cases/20171207_morning/PIDS_DYNAMIC_wd_kivenlahti_precursor filter=lfs diff=lfs merge=lfs -text
 input_data_to_palm/cases/20171207_morning/PIDS_DYNAMIC_all_kivenlahti filter=lfs diff=lfs merge=lfs -text
 input_data_to_palm/cases/20171207_morning/PIDS_DYNAMIC_all_kivenlahti_precursor filter=lfs diff=lfs merge=lfs -text
+input_data_to_palm/cases/20170609_morning/RAD/PIDS_CHEM_N03 filter=lfs diff=lfs merge=lfs -text
+input_data_to_palm/cases/20170609_morning/RAD/PIDS_DYNAMIC filter=lfs diff=lfs merge=lfs -text
+input_data_to_palm/cases/20170609_morning/RAD/PIDS_DYNAMIC_N03_FRES filter=lfs diff=lfs merge=lfs -text
+input_data_to_palm/cases/20170609_morning/RAD/PIDS_SALSA_N03_hietikko_EEA filter=lfs diff=lfs merge=lfs -text
