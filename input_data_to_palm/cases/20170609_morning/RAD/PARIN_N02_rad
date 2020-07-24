@@ -45,16 +45,6 @@
     statistic_regions    = 2,
 
 !
-!-- Wall/soil spinup
-!------------------------------------------------------------------------------    
-    spinup_time          = 86400.0,
-    spinup_pt_mean       = 285.15,         ! Jani estimated 
-    spinup_pt_amplitude  = 3.0,            ! give a diurnal cycle from 11 - 14 °C
-    dt_spinup            = 120.0,
-    data_output_during_spinup = .F.,
-
-
-!
 !-- Boundary conditions
 !------------------------------------------------------------------------------ 
 !    bc_lr                = 'nested', 

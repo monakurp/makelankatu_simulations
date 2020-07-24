@@ -40,15 +40,6 @@
     origin_date_time     = '2017-06-09 07:00:00 +03',
 
 !
-!-- Wall/soil spinup
-!------------------------------------------------------------------------------    
-    spinup_time          = 86400.0,
-    spinup_pt_mean       = 285.15,         ! Jani estimated 
-    spinup_pt_amplitude  = 3.0,            ! give a diurnal cycle from 11 - 14 °C
-    dt_spinup            = 120.0,
-    data_output_during_spinup = .F.,
-
-!
 !-- Statistics
 !------------------------------------------------------------------------------
     statistic_regions    = 3,
@@ -158,10 +149,11 @@
                           60.0, ! mask 5: avg gas data
                           60.0, ! mask 6: "profile" data (behind the container)
                           60.0, ! mask 7: "profile" data (on the other side)
-                          60.0, ! mask 8: temporal surface data
+                           1.0, ! mask 8: temporal surface data
                            1.0, ! mask 9: temporal profile data
 
-    skip_time_domask   = 300.0, 900.0, 900.0, 300.0, 300.0, 300.0, 300.0, 300.0, 6300.0,
+!    skip_time_domask   = 300.0, 900.0, 900.0, 300.0, 300.0, 300.0, 300.0, 900.0, 900.0,
+    skip_time_domask   = 3900.0, 4500.0, 4500.0, 3900.0, 3900.0, 3900.0, 3900.0, 4500.0, 4500.0, ! add 3600.0
 
 !
 !-- Excluding the border areas
@@ -287,13 +279,13 @@
                               'salsa_PM2.5_av', 
                               'salsa_N_UFP_av',  
                               'salsa_Ntot_av', 
-                              'kc_NO_av',
-                              'kc_NO2_av',
-                              'kc_O3_av',
+                              'u',
+                              'v',
+                              'w',
 
-    mask_x_loop(8,:)   = 60.0, 520.0, 1.0,
-    mask_y_loop(8,:)   = 60.0, 520.0, 1.0,
-    mask_z_loop(8,:)   =  0.0,  80.0, 1.0,
+    mask_x_loop(8,:)   = 60.0, 520.0, 2.0,
+    mask_y_loop(8,:)   = 60.0, 520.0, 2.0,
+    mask_z_loop(8,:)   =  0.0,  80.0, 2.0,
 
 !
 !-- Temporal "profiles" in front of the container
@@ -433,8 +425,6 @@
     call_chem_at_all_substeps  = .FALSE.,
 
     photolysis_scheme          = 'simple',
-
-    skip_time_do_chemistry     = 300.0,
 !
 !-- Chemical species
     cs_name                    =     'NO',    'NO2',     'O3',     'OH',     'RH',    'RO2',   'RCHO',
