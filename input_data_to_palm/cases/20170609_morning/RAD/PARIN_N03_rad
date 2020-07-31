@@ -276,16 +276,15 @@
 !
 !-- Volume data:
     data_output_masks(8,:) =  'salsa_LDSA_av',   
-                              'salsa_PM2.5_av', 
-                              'salsa_N_UFP_av',  
+                              'salsa_PM2.5_av',  
                               'salsa_Ntot_av', 
                               'u',
                               'v',
                               'w',
 
-    mask_x_loop(8,:)   = 60.0, 520.0, 2.0,
-    mask_y_loop(8,:)   = 60.0, 520.0, 2.0,
-    mask_z_loop(8,:)   =  0.0,  80.0, 2.0,
+    mask_x_loop(8,:)   = 120.0, 460.0, 2.0,
+    mask_y_loop(8,:)   =  80.0, 380.0, 2.0,
+    mask_z_loop(8,:)   =  17.0,  70.0, 2.0,
 
 !
 !-- Temporal "profiles" in front of the container
