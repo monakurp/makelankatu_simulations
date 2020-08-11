@@ -27,6 +27,7 @@ nx_child=576
 ny_child=576
 
 # Origin of the map (N=Northing, E=Easting):
+# coordinate system: ETRS-GKn coordinates (see e.g. https://asiointi.maanmittauslaitos.fi/karttapaikka/?lang=en)
 pN=6676070
 pE=25497317
 pE_root=25496417
