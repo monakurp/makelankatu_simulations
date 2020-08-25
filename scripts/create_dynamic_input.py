@@ -29,7 +29,7 @@ datestr     = '{}{:02d}{:02d}'.format(sim_year, sim_month, sim_day)
 adchem_type = 'FRES' # 'FRES' or 'orig'
 
 precursor = False
-radiation = True
+radiation = False
 
 # ------------------------------------------------------------------------------------------------#
 
@@ -860,7 +860,7 @@ if not precursor:
   # Initial profiles:
 
   # aerosol chemical composition:
-  init_adchem_mf_a = np.mean( adchem['mass_fracs'][ss:ee+11,:,:], axis=0)
+  init_adchem_mf_a = np.mean( adchem['mass_fracs'][ss:ee+1,:,:], axis=0)
   init_mf_a = np.zeros([len(z_N03), ncc], dtype=float)
   for c in range(ncc):
     init_mf_a[:,c] = integrate_profile(prof_z, init_adchem_mf_a[:,c], z_N03, init_mf_a[:,c])
