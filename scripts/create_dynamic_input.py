@@ -51,25 +51,25 @@ if ( datestr=='20170609' and sim_time=='morning' ):
   end_hour   = 9
   end_min    = 15
   plusUTC    = 3
-  
+
   if radiation:
     precursor = False
     start_hour = 6
-    
+
 elif ( datestr=='20170609' and sim_time=='evening' ):
   start_hour = 20
   start_min  = 10
   end_hour   = 21
   end_min    = 15
   plusUTC    = 3
-  
+
 elif ( datestr=='20170614' and sim_time=='morning' ):
   start_hour = 6
   start_min  = 55
   end_hour   = 9
   end_min    = 0
   plusUTC    = 3
-  
+
 elif ( datestr=='20171207' and sim_time=='morning' ):
   start_hour = 7
   start_min  = 5
@@ -130,7 +130,7 @@ elif grid_type == 'test':
 
   dx_N03 = 2.0
   dy_N03 = 2.0
-  dz_N03 = 2.0 
+  dz_N03 = 2.0
 
   dt = 360.0
 
@@ -234,7 +234,7 @@ for i in range( len( lats )-1 ):
   lons[i+1] = lons[0] + (i+1)/ (npoints_interpolation-1) * (nx+1)*dx / circle_lat * 360.0
 
 print('latitudes:')
-print("".join(['{}, '.format(i)*npoints_interpolation for i in lats])) 
+print("".join(['{}, '.format(i)*npoints_interpolation for i in lats]))
 print('')
 print('longitudes:')
 print("".join(['{}, '.format(i) for i in lons]) *npoints_interpolation)
@@ -263,7 +263,7 @@ longitude = np.array(full_backup['longitude'])
 if (np.array(subset['longitude'][:]) != longitude[:]).any():
   sys.exit('Files do not have the same longitudes!')
 longitude = np.reshape(longitude, (len(lats),len(lons)))
-  
+
 latitude = np.array(full_backup['latitude'])
 if (np.array(subset['latitude'][:]) != latitude[:]).any():
   sys.exit('Files do not have the same latitudes!')
@@ -620,7 +620,7 @@ ncvar.standard_name = ""
 ncvar.lod = 1
 
 
-# ls_forcing_ug/vg (time,z) 
+# ls_forcing_ug/vg (time,z)
 lnames = ["geostrophic wind (u component)", "geostrophic wind (v component)"]
 
 for a in range(2):
@@ -653,7 +653,7 @@ for a in range(len(arrays)):
   ncvar.standard_name = ""
   ncvar.lod = 2
 
-  
+
 # ls_forcing_right_XX (time,z/zw,y/yv)
 lnames = ["large-scale forcing for right model boundary for the wind component in x direction",\
           "large-scale forcing for right model boundary for the wind component in y direction",\
@@ -754,7 +754,9 @@ ncvar.lod = 2
 
 if not precursor:
 
-  avg_bg = True # Use the temporal average of concentrations
+  # Use the temporal average of concentrations or not. For the initial concentrations, apply always
+  # average concentrations over the simulation hours
+  avg_bg = True
 
   # Provide this information:
   maxspec = 7
@@ -840,10 +842,10 @@ if not precursor:
 
   dims = ['x','y','z','time','Dmid','composition_index','max_string_length']
   arrays = [x_N03, y_N03, z_N03, time_palm, dmid, composition_index, max_string_length]
-  std_names = ['x coordinate of cell centers', 'y coordinate of cell centers', 
+  std_names = ['x coordinate of cell centers', 'y coordinate of cell centers',
                'z coordinate of cell centers', 'time', 'aerosol_geometric_mean_diameter','','']
   units = ['m','m','m',
-           'seconds since {:04d}{:02d}{:02d} {}:00 UTC'.format(sim_year, sim_month, sim_day, 
+           'seconds since {:04d}{:02d}{:02d} {}:00 UTC'.format(sim_year, sim_month, sim_day,
                                                                start_hour),
            'm','']
   types = ['f4','f4','f4','f4','f4','i4','i4']
@@ -860,14 +862,14 @@ if not precursor:
   # Initial profiles:
 
   # aerosol chemical composition:
-  init_adchem_mf_a = np.mean( adchem['mass_fracs'][ss:ee+1,:,:], axis=0)
+  init_adchem_mf_a = np.mean(adchem['mass_fracs'][ss:ee+1,:,:], axis=0) # temporal average
   init_mf_a = np.zeros([len(z_N03), ncc], dtype=float)
   for c in range(ncc):
     init_mf_a[:,c] = integrate_profile(prof_z, init_adchem_mf_a[:,c], z_N03, init_mf_a[:,c])
   init_mf_b = 0.0 * init_mf_a
 
   # aerosol size distribution:
-  init_adchem_psd = np.mean(adchem['psd'][ss:ee+1,:,:], axis=0)
+  init_adchem_psd = np.mean(adchem['psd'][ss:ee+1,:,:], axis=0) # temporal average
   nbins = np.shape(init_adchem_psd)[1]
   init_psd = np.zeros([len(z_N03), nbins], dtype=float)
   for b in range(nbins):
@@ -880,8 +882,8 @@ if not precursor:
 
   # aerosol chemical composition:
   lsf_adchem_mf_a = adchem['mass_fracs'][ss:ee+1,:,:]
-  if avg_bg:
-    avgi = np.nanmean(lsf_adchem_mf_a, axis=0)
+  if avg_bg: # temporal average
+    avgi = np.nanmean(lsf_adchem_mf_a, axis=0) 
     for t in range(np.shape(lsf_adchem_mf_a)[0]):
       lsf_adchem_mf_a[t,:,:] = avgi
   lsf_mf_a = np.zeros([ee-ss+1, len(z_N03), ncc], dtype=float)
@@ -892,7 +894,7 @@ if not precursor:
 
   # aerosol size distribution:
   lsf_adchem_psd = adchem['psd'][ss:ee+1,:,:]
-  if avg_bg:
+  if avg_bg: # temporal average
     avgi = np.nanmean(lsf_adchem_psd, axis=0)
     for t in range(np.shape(lsf_adchem_psd)[0]):
       lsf_adchem_psd[t,:,:] = avgi
@@ -908,7 +910,7 @@ if not precursor:
   cn = dsout_N03.createVariable('composition_name', 'S1', ('composition_index','max_string_length',))
   cn[:] = list(map(lambda x : list(x), composition_name))
   cn.long_name = 'aerosol composition name'
-  cn.standard_name = 'composition_name' 
+  cn.standard_name = 'composition_name'
 
   # aerosol chemical composition:
   init_mf_a_v = createNetcdfVariable(dsout_N03, init_mf_a, 'init_atmosphere_mass_fracs_a', 0,
@@ -931,7 +933,7 @@ if not precursor:
     lsf_mf_a_v = createNetcdfVariable(dsout_N03, dummy, namev, 0, '', 'f4',
                                       ('time','z',ls_dimsname[nvi], 'composition_index',),
                                       variable, fill_value=-9999.0)
-    lsf_mf_a_v.long_name = "boundary conditions of mass fraction profile: a bins" 
+    lsf_mf_a_v.long_name = "boundary conditions of mass fraction profile: a bins"
 
     namev = 'ls_forcing_{}_mass_fracs_b'.format(nv)
     lsf_mf_b_v = createNetcdfVariable(dsout_N03, dummy*0, namev, 0, '', 'f4',
@@ -960,7 +962,7 @@ if not precursor:
   # aerosol size distribution
   init_psdv = createNetcdfVariable(dsout_N03, init_psd, 'init_atmosphere_aerosol', 0, '#/m3',
                                    'f4', ('z','Dmid',), variable, fill_value=-9999.0)
-  init_psdv.long_name = 'initial vertical profile of aerosol concentration' 
+  init_psdv.long_name = 'initial vertical profile of aerosol concentration'
   init_psdv.lod = 1
 
   nvi = 0
@@ -986,6 +988,226 @@ if not precursor:
   lsf_psdv.long_name = 'boundary condition of aerosol concentration'
   lsf_psdv.lod = 1
 
+  # ********************************************************************************************** #
+
+  # ADD ALSO GASES THAT ARE APPLIED IN SALSA
+  # These are needed in case the chemistry module is turned off
+
+  # -----------------------------------------------------------------------------------------------#
+  # Initial profiles: temporal average
+
+  # H2SO4:
+  init_achem_h2so4 = np.mean(adchem['H2SO4'][ss:ee+1,:], axis=0) * 1e6 # from 1/cm3 to 1/m3
+  init_h2so4 = np.zeros(len(z_N03), dtype=float)
+  init_h2so4 = integrate_profile(prof_z, init_achem_h2so4, z_N03, init_h2so4)
+
+  # HNO3:
+  init_achem_hno3 = np.mean(adchem['HNO3'][ss:ee+1,:], axis=0) * 1e6 # from 1/cm3 to 1/m3
+  init_hno3 = np.zeros(len(z_N03), dtype=float)
+  init_hno3 = integrate_profile(prof_z, init_achem_hno3, z_N03, init_hno3)
+
+  # NH3:
+  init_achem_nh3 = np.mean(adchem['NH3'][ss:ee+1,:], axis=0) * 1e6 # from 1/cm3 to 1/m3
+  init_nh3 = np.zeros(len(z_N03), dtype=float)
+  init_nh3 = integrate_profile(prof_z, init_achem_nh3, z_N03, init_nh3)
+
+  # OCSV:
+  init_achem_ocsv = np.mean(adchem['OCSV'][ss:ee+1,:], axis=0) * 1e6 # from 1/cm3 to 1/m3
+  init_ocsv = np.zeros(len(z_N03), dtype=float)
+  init_ocsv = integrate_profile(prof_z, init_achem_ocsv, z_N03, init_ocsv)
+
+  # OCNV:
+  init_achem_ocnv = np.mean(adchem['OCNV'][ss:ee+1,:], axis=0) * 1e6 # from 1/cm3 to 1/m3
+  init_ocnv = np.zeros(len(z_N03), dtype=float)
+  init_ocnv = integrate_profile(prof_z, init_achem_ocnv, z_N03, init_ocnv)
+
+  # -----------------------------------------------------------------------------------------------#
+  # Forcing:
+
+  # H2SO4:
+  lsf_adchem_h2so4 = adchem['H2SO4'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
+  if avg_bg: # temporal average
+    avgi = np.nanmean(lsf_adchem_h2so4, axis=0) 
+    for t in range(np.shape(lsf_adchem_h2so4)[0]):
+      lsf_adchem_h2so4[t,:] = avgi
+  lsf_h2so4 = np.zeros([ee-ss+1, len(z_N03)], dtype=float)
+  for t in range(ee-ss+1):
+    lsf_h2so4[t,:] = integrate_profile(prof_z, lsf_adchem_h2so4[t,:], z_N03, lsf_h2so4[t,:])
+
+  # HNO3:
+  lsf_adchem_hno3 = adchem['HNO3'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
+  if avg_bg: # temporal average
+    avgi = np.nanmean(lsf_adchem_hno3, axis=0) 
+    for t in range(np.shape(lsf_adchem_hno3)[0]):
+      lsf_adchem_hno3[t,:] = avgi
+  lsf_hno3 = np.zeros([ee-ss+1, len(z_N03)], dtype=float)
+  for t in range(ee-ss+1):
+    lsf_hno3[t,:] = integrate_profile(prof_z, lsf_adchem_hno3[t,:], z_N03, lsf_hno3[t,:])
+
+  # NH3:
+  lsf_adchem_nh3 = adchem['NH3'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
+  if avg_bg: # temporal average
+    avgi = np.nanmean(lsf_adchem_nh3, axis=0) 
+    for t in range(np.shape(lsf_adchem_nh3)[0]):
+      lsf_adchem_nh3[t,:] = avgi
+  lsf_nh3 = np.zeros([ee-ss+1, len(z_N03)], dtype=float)
+  for t in range(ee-ss+1):
+    lsf_nh3[t,:] = integrate_profile(prof_z, lsf_adchem_nh3[t,:], z_N03, lsf_nh3[t,:])
+
+  # OCSV:
+  lsf_adchem_ocsv = adchem['OCSV'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
+  if avg_bg: # temporal average
+    avgi = np.nanmean(lsf_adchem_ocsv, axis=0) 
+    for t in range(np.shape(lsf_adchem_ocsv)[0]):
+      lsf_adchem_ocsv[t,:] = avgi
+  lsf_ocsv = np.zeros([ee-ss+1, len(z_N03)], dtype=float)
+  for t in range(ee-ss+1):
+    lsf_ocsv[t,:]  = integrate_profile(prof_z, lsf_adchem_ocsv[t,:], z_N03, lsf_ocsv[t,:])
+
+  # OCNV:
+  lsf_adchem_ocnv = adchem['OCNV'][ss:ee+1,:] * 1e6 # from 1/cm3 to 1/m3
+  if avg_bg: # temporal average
+    avgi = np.nanmean(lsf_adchem_ocnv, axis=0) 
+    for t in range(np.shape(lsf_adchem_ocnv)[0]):
+      lsf_adchem_ocnv[t,:] = avgi
+  lsf_ocnv = np.zeros([ee-ss+1, len(z_N03)], dtype=float)
+  for t in range(ee-ss+1):
+    lsf_ocnv[t,:]  = integrate_profile(prof_z, lsf_adchem_ocnv[t,:], z_N03, lsf_ocnv[t,:])
+
+  # -----------------------------------------------------------------------------------------------#
+  # SAVE VARIABLES TO PIDS_DYNAMIC:
+
+  # H2SO4:
+  h2so4_adchem = createNetcdfVariable(dsout_N03, init_h2so4, 'init_atmosphere_H2SO4', len(z_N03),
+                                      '#/m3', 'f4', ('z',), variable, fill_value=-9999.0)
+  h2so4_adchem.long_name = "initial vertical profile of H2SO4"
+
+  nvi = 0
+  for nv in ls_names:
+    dummy = np.zeros([ee-ss+1, len(z_N03), len(ls_dims[nvi])])
+    for i in range(len(ls_dims[nvi])):
+      dummy[:,:,i] = lsf_h2so4
+    namev = 'ls_forcing_{}_H2SO4'.format(nv)
+    lsf_h2so4v = createNetcdfVariable(dsout_N03, dummy, namev, 0, '#/m3', 'f4',
+                                      ('time','z',ls_dimsname[nvi],), variable, fill_value=-9999.0)
+    lsf_h2so4v.long_name = "background concentration of H2SO4"
+    nvi += 1
+
+  dummy = np.zeros([ee-ss+1, len(y_N03), len(x_N03)])
+  for j in range(len(y_N03)):
+    for i in range(len(x_N03)):
+      dummy[:,j,i] = lsf_h2so4[:,-1]
+  namev = 'ls_forcing_top_H2SO4'
+  lsf_h2so4v = createNetcdfVariable(dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',),
+                                    variable, fill_value=-9999.0)
+  lsf_h2so4v.long_name = "background concentration of H2SO4"
+
+
+  # HNO3:
+  hno3_adchem = createNetcdfVariable(dsout_N03, init_hno3, 'init_atmosphere_HNO3', len(z_N03),
+                                     '#/m3', 'f4', ('z',), variable, fill_value=-9999.0)
+  hno3_adchem.long_name = "initial vertical profile of HNO3"
+
+  nvi = 0
+  for nv in ls_names:
+    dummy = np.zeros([ee-ss+1, len(z_N03), len(ls_dims[nvi])])
+    for i in range( len(ls_dims[nvi])):
+      dummy[:,:,i] = lsf_hno3
+    namev = 'ls_forcing_{}_HNO3'.format(nv)
+    lsf_hno3v = createNetcdfVariable(dsout_N03, dummy, namev, 0, '#/m3', 'f4',
+                                    ('time','z',ls_dimsname[nvi],), variable, fill_value=-9999.0)
+    lsf_hno3v.long_name = "background concentration of HNO3"
+    nvi += 1
+
+  dummy = np.zeros([ee-ss+1, len(y_N03), len(x_N03)])
+  for j in range(len(y_N03)):
+    for i in range(len(x_N03)):
+      dummy[:,j,i] = lsf_hno3[:,-1]
+  namev = 'ls_forcing_top_HNO3'
+  lsf_hno3v = createNetcdfVariable(dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',),
+                                   variable, fill_value=-9999.0)
+  lsf_hno3v.long_name = "background concentration of HNO3"
+
+
+  # NH3:
+  nh3_adchem = createNetcdfVariable(dsout_N03, init_nh3, 'init_atmosphere_NH3', len(z_N03),
+                                    '#/m3', 'f4', ('z',), variable, fill_value=-9999.0)
+  nh3_adchem.long_name = "initial vertical profile of NH3"
+
+  nvi = 0
+  for nv in ls_names:
+    dummy = np.zeros([ee-ss+1, len(z_N03), len(ls_dims[nvi])])
+    for i in range(len(ls_dims[nvi])):
+      dummy[:,:,i] = lsf_nh3
+    namev = 'ls_forcing_{}_NH3'.format(nv)
+    lsf_nh3v = createNetcdfVariable(dsout_N03, dummy, namev, 0, '#/m3', 'f4',
+                                   ('time','z',ls_dimsname[nvi],), variable, fill_value=-9999.0)
+    lsf_nh3v.long_name = "background concentration of NH3"
+    nvi += 1
+
+  dummy = np.zeros([ee-ss+1, len(y_N03), len(x_N03)])
+  for j in range(len(y_N03)):
+    for i in range(len(x_N03)):
+      dummy[:,j,i] = lsf_nh3[:,-1]
+  namev = 'ls_forcing_top_NH3'
+  lsf_nh3v = createNetcdfVariable(dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',),
+                                  variable, fill_value=-9999.0)
+  lsf_nh3v.long_name = "background concentration of NH3"
+
+
+  # OCSV:
+  ocsv_adchem = createNetcdfVariable(dsout_N03, init_ocsv, 'init_atmosphere_OCSV', len(z_N03),
+                                     '#/m3', 'f4', ('z',), variable, fill_value=-9999.0)
+  ocsv_adchem.long_name = "initial vertical profile of OCSV"
+
+  nvi = 0
+  for nv in ls_names:
+    dummy = np.zeros([ee-ss+1, len(z_N03), len(ls_dims[nvi])])
+    for i in range(len(ls_dims[nvi])):
+      dummy[:,:,i] = lsf_ocsv
+    namev = 'ls_forcing_{}_OCSV'.format(nv)
+    lsf_ocsvv = createNetcdfVariable(dsout_N03, dummy, namev, 0, '#/m3', 'f4',
+                                     ('time','z',ls_dimsname[nvi],), variable, fill_value=-9999.0)
+    lsf_ocsvv.long_name = "background concentration of OCSV"
+    nvi += 1
+
+  dummy = np.zeros([ee-ss+1, len(y_N03), len(x_N03)])
+  for j in range(len(y_N03)):
+    for i in range(len(x_N03)):
+      dummy[:,j,i] = lsf_ocsv[:,-1]
+  namev = 'ls_forcing_top_OCSV'
+  lsf_ocsvv = createNetcdfVariable(dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',),
+                                   variable, fill_value=-9999.0)
+  lsf_ocsvv.long_name = "background concentration of OCSV"
+
+
+  # OCNV:
+  ocnv_adchem = createNetcdfVariable(dsout_N03, init_ocnv, 'init_atmosphere_OCNV', len(z_N03),
+                                     '#/m3', 'f4', ('z',), variable, fill_value=-9999.0)
+  ocnv_adchem.long_name = "initial vertical profile of OCNV"
+
+  nvi = 0
+  for nv in ls_names:
+    dummy = np.zeros([ee-ss+1, len(z_N03), len(ls_dims[nvi])])
+    for i in range(len(ls_dims[nvi])):
+      dummy[:,:,i] = lsf_ocnv
+    namev = 'ls_forcing_{}_OCNV'.format(nv)
+    lsf_ocnvv = createNetcdfVariable(dsout_N03, dummy, namev, 0, '#/m3', 'f4',
+                                     ('time','z',ls_dimsname[nvi],), variable, fill_value=-9999.0)
+    lsf_ocnvv.long_name = "background concentration of OCNV"
+    nvi += 1
+
+  dummy = np.zeros([ee-ss+1, len(y_N03), len(x_N03)])
+  for j in range(len(y_N03)):
+    for i in range(len(x_N03)):
+      dummy[:,j,i] = lsf_ocnv[:,-1]
+  namev = 'ls_forcing_top_OCNV'
+  lsf_ocnvv = createNetcdfVariable(dsout_N03, dummy, namev, 0, '#/m3', 'f4', ('time','y','x',),
+                                   variable, fill_value=-9999.0)
+  lsf_ocnvv.long_name = "background concentration of OCNV"
+
+
+  # ********************************************************************************************** #
 
   # PRINT INITIAL GAS CONCENTRATIONS
   gas_names = ['NO','NO2','O3','OH','RH','RO2','RCHO','HO2','H2SO4','HNO3','NH3','OCNV','OCSV']
@@ -1002,7 +1224,7 @@ if not precursor:
   for ig in range(len(gas_names)):
     stri = "'{}'".format(gas_names[ig])
     nline += "{:>9},".format(stri)
-    sline += " {:3.2e},".format(np.nanmean(adchem[gas_names[ig]][ss:ee+1,zi[0]], axis=0 )[0])
+    sline += " {:3.2e},".format(np.nanmean(adchem[gas_names[ig]][ss:ee+1,zi[0]], axis=0)[0])
   gases_out.write(nline+'\n')
   gases_out.write(sline+'\n')
 
