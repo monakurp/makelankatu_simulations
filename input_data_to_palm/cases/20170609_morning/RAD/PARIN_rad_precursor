@@ -64,7 +64,7 @@
     spinup_time          = 86400.0,
     spinup_pt_mean       = 285.15,         ! Jani estimated 
     spinup_pt_amplitude  = 3.0,            ! give a diurnal cycle from 11 - 14 °C
-    dt_spinup            = 120.0,
+    dt_spinup            = 10.0,
     data_output_during_spinup = .F.,
 
 
@@ -176,8 +176,8 @@
  &stg_par
 
     use_syn_turb_gen =   .T., 
-    dt_stg_adjust    =   5.0, 
-    dt_stg_call      = 300.0,
+    dt_stg_adjust    =   300.0, 
+    dt_stg_call      =   0.0,
 
  / ! end of stg_par namelist
 
@@ -242,7 +242,6 @@
 !-------------------------------------------------------------------------------
  &urban_surface_parameters
 
-    usm_material_model     = .T.,
     usm_wall_mod = .T.,
 
  / ! end of urban_surface_parameters namelist

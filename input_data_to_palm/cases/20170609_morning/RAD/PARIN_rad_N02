@@ -34,10 +34,10 @@
 !
 !-- Initialization
 !------------------------------------------------------------------------------
-    initializing_actions = 'set_constant_profiles',   !'set_constant_profiles', or 'inifor', 
+    initializing_actions = 'read_restart_data',   !'set_constant_profiles', or 'inifor', 
                                                       ! or both (met. from inifor, chem constant profiles)
 
-    origin_date_time     = '2017-06-09 06:00:00 +03',
+    origin_date_time     = '2017-06-09 07:00:00 +03',
 
 !
 !-- Statistics
@@ -50,7 +50,7 @@
     spinup_time          = 86400.0,
     spinup_pt_mean       = 285.15,         ! Jani estimated 
     spinup_pt_amplitude  = 3.0,            ! give a diurnal cycle from 11 - 14 °C
-    dt_spinup            = 120.0,
+    dt_spinup            = 10.0,
     data_output_during_spinup = .F.,
 
 
@@ -84,15 +84,18 @@
 !
 !-- Run steering
 !------------------------------------------------------------------------------
-    end_time              = 3600.0, ! 3600 (precursor) 2*3600s + 15*60s
+    end_time              = 11700.0, ! 2*3600s + 15*60s + 3600s
     create_disturbances   = .T.,
     netcdf_data_format    = 4,
+!    termination_time_needed = 86400.0,
 
 !
 !-- Run-control/timeseries output settings
 !------------------------------------------------------------------------------
     dt_run_control        =  1.0,
     dt_dots               =  5.0,
+    debug_output          = .T.,
+    debug_output_timestep = .T.,
 
 !
 !-- Profile output settings
@@ -173,7 +176,8 @@
      radiation_scheme =  'rrtmg',    !'clear-sky' or 'rrtmg',
      constant_albedo = .F.,
 
-     dt_radiation = 5.0,
+     dt_radiation = 60.0,
+     unscheduled_radiation_calls = .F.,
 
      surface_reflections = .T.,
      nrefsteps = 3,
@@ -212,7 +216,6 @@
 !-------------------------------------------------------------------------------
  &urban_surface_parameters
 
-    usm_material_model     = .T.,
     usm_wall_mod = .T.,
 
  / ! end of urban_surface_parameters namelist
